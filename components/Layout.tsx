@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, ShoppingCart, DollarSign, Settings as SettingsIcon, LogOut, Key } from 'lucide-react';
+import { LayoutDashboard, Users, Package, ShoppingCart, DollarSign, Settings as SettingsIcon, LogOut, User as UserIcon, Sun, Moon } from 'lucide-react';
 import { auth } from '../services/auth';
 import { User } from '../types';
 
@@ -13,8 +13,10 @@ interface LayoutProps {
 const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
   <Link
     to={to}
-    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-      active ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+      active 
+        ? 'bg-primary text-white shadow-md' 
+        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary'
     }`}
   >
     <Icon size={20} />
@@ -24,29 +26,55 @@ const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, lab
 
 export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
   const location = useLocation();
-  const accessKey = auth.getAccessKey();
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('gesto_theme');
+    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
 
-  if (location.pathname.startsWith('/print/') || location.pathname === '/login') {
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('gesto_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('gesto_theme', 'light');
+    }
+  }, [darkMode]);
+
+  if (location.pathname.startsWith('/print/') || location.pathname === '/login' || location.pathname === '/register') {
     return <>{children}</>;
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-sm">G</div>
-            Gestor Pro
-          </h1>
-          <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Key size={10} /> Sua Chave
-             </div>
-             <div className="text-xs font-mono font-bold text-slate-700 break-all select-all cursor-pointer" title="Clique para selecionar">
-                {accessKey}
-             </div>
+      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 hidden md:flex flex-col transition-colors duration-300">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-800">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-sm">G</div>
+              Gesto Pro
+            </h1>
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-primary transition-colors"
+              title={darkMode ? "Mudar para Modo Claro" : "Mudar para Modo Noturno"}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </div>
+          
+          {user && (
+            <div className="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300">
+                    <UserIcon size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user.email}</p>
+                </div>
+            </div>
+          )}
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -55,29 +83,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
           <NavItem to="/clients" icon={Users} label="Clientes" active={location.pathname.startsWith('/clients')} />
           <NavItem to="/products" icon={Package} label="Produtos" active={location.pathname.startsWith('/products')} />
           <NavItem to="/expenses" icon={DollarSign} label="Despesas" active={location.pathname.startsWith('/expenses')} />
-          <div className="pt-4 mt-4 border-t border-gray-100">
+          <div className="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
             <NavItem to="/settings" icon={SettingsIcon} label="Configurações" active={location.pathname.startsWith('/settings')} />
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
-          <button onClick={() => auth.logout()} className="flex items-center space-x-3 px-4 py-3 text-red-500 hover:bg-red-50 w-full rounded-lg transition-colors font-bold text-sm">
+        <div className="p-4 border-t border-gray-100 dark:border-slate-800">
+          <button onClick={() => auth.logout()} className="flex items-center space-x-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 w-full rounded-lg transition-colors font-bold text-sm">
             <LogOut size={18} />
-            <span>Desconectar Chave</span>
+            <span>Sair do Sistema</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-            <h1 className="font-bold text-slate-800 flex items-center gap-2">
+        <header className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 p-4 flex justify-between items-center transition-colors">
+            <h1 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-white text-xs">G</div>
-                Gestor Pro
+                Gesto Pro
             </h1>
             <nav className="flex gap-4 items-center">
-               <Link to="/" className="text-slate-600"><LayoutDashboard size={20}/></Link>
-               <Link to="/orders" className="text-slate-600"><ShoppingCart size={20}/></Link>
+               <button onClick={() => setDarkMode(!darkMode)} className="text-slate-600 dark:text-slate-400">
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+               </button>
+               <Link to="/" className="text-slate-600 dark:text-slate-400"><LayoutDashboard size={20}/></Link>
                <button onClick={() => auth.logout()} className="text-red-500"><LogOut size={20}/></button>
             </nav>
         </header>

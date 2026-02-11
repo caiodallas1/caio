@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { Order, OrderStatus, Expense, Settings, DEFAULT_SETTINGS } from '../types';
@@ -12,6 +13,11 @@ export const Dashboard: React.FC = () => {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [orders, setOrders] = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  // Detect dark mode for chart styling
+  const isDarkMode = document.documentElement.classList.contains('dark');
+  const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
+  const gridColor = isDarkMode ? '#1e293b' : '#f1f5f9';
 
   useEffect(() => {
       const loadData = async () => {
@@ -135,17 +141,17 @@ export const Dashboard: React.FC = () => {
 
   const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  if (loading) return <div className="p-8">Carregando dados...</div>;
+  if (loading) return <div className="p-8 dark:text-slate-400">Carregando dados...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-800">Dashboard Financeiro</h2>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard Financeiro</h2>
         <div className="flex gap-2">
             <Link 
                 to={`/print/report/${selectedMonth}`} 
                 target="_blank"
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-slate-700 hover:bg-gray-50 text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 text-sm font-medium transition-colors"
             >
                 <Printer size={16} /> Exportar Relatório
             </Link>
@@ -153,7 +159,7 @@ export const Dashboard: React.FC = () => {
               type="month" 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border rounded-md px-3 py-2 bg-white text-slate-700"
+              className="border border-gray-300 dark:border-slate-800 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
             />
         </div>
       </div>
@@ -168,7 +174,7 @@ export const Dashboard: React.FC = () => {
         <MetricCard 
           title="Lucro Líquido" 
           value={formatMoney(metrics.netProfit)} 
-          valueColor={metrics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}
+          valueColor={metrics.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}
           icon={<DollarSign className="text-blue-500" />} 
           sub={`Margem: ${metrics.margin.toFixed(1)}%`}
         />
@@ -176,7 +182,7 @@ export const Dashboard: React.FC = () => {
           title="Custos (Prod + Frete Pago)" 
           value={formatMoney(metrics.totalCostGoods + metrics.totalFreightCost)} 
           icon={<Package className="text-orange-500" />} 
-          sub={`Prod: ${formatMoney(metrics.totalCostGoods)} | Frete Pago: ${formatMoney(metrics.totalFreightCost)}`}
+          sub={`Prod: ${formatMoney(metrics.totalCostGoods)} | Frete: ${formatMoney(metrics.totalFreightCost)}`}
         />
         <MetricCard 
           title="Despesas Fixas" 
@@ -186,15 +192,18 @@ export const Dashboard: React.FC = () => {
         />
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
-        <h3 className="text-lg font-semibold mb-4">Evolução Diária (Vendas x Lucro Op.)</h3>
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 h-80 transition-colors">
+        <h3 className="text-lg font-semibold mb-4 dark:text-white">Evolução Diária (Vendas x Lucro Op.)</h3>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={metrics.chartData}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="day" />
-            <YAxis />
-            <Tooltip formatter={(value: number) => formatMoney(value)} />
-            <Bar dataKey="Vendas" fill="#2563eb" radius={[4, 4, 0, 0]} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+            <XAxis dataKey="day" stroke={axisColor} fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke={axisColor} fontSize={12} tickLine={false} axisLine={false} />
+            <Tooltip 
+              formatter={(value: number) => formatMoney(value)}
+              contentStyle={{ backgroundColor: isDarkMode ? '#0f172a' : '#fff', borderColor: isDarkMode ? '#1e293b' : '#f1f5f9', color: isDarkMode ? '#fff' : '#000' }}
+            />
+            <Bar dataKey="Vendas" fill="#d97706" radius={[4, 4, 0, 0]} />
             <Bar dataKey="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -203,13 +212,13 @@ export const Dashboard: React.FC = () => {
   );
 };
 
-const MetricCard = ({ title, value, icon, sub, valueColor = "text-slate-800" }: any) => (
-  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+const MetricCard = ({ title, value, icon, sub, valueColor = "text-slate-800 dark:text-white" }: any) => (
+  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
     <div className="flex justify-between items-start mb-2">
-      <span className="text-slate-500 font-medium text-sm">{title}</span>
-      <div className="p-2 bg-slate-50 rounded-lg">{icon}</div>
+      <span className="text-slate-500 dark:text-slate-400 font-medium text-sm">{title}</span>
+      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">{icon}</div>
     </div>
-    <div className={`text-2xl font-bold ${valueColor} mb-1`}>{value}</div>
-    {sub && <div className="text-xs text-slate-400">{sub}</div>}
+    <div className={`text-2xl font-bold ${valueColor} mb-1 tracking-tight`}>{value}</div>
+    {sub && <div className="text-xs text-slate-400 dark:text-slate-500">{sub}</div>}
   </div>
 );
