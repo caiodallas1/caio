@@ -2,7 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  // Password is handled by Netlify Identity (GoTrue)
+  password: string; // Stored locally
 }
 
 export interface Client {

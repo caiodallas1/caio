@@ -1,69 +1,65 @@
-import GoTrue from 'gotrue-js';
 import { User } from '../types';
+import { generateId } from './db';
 
-// Initialize GoTrue
-// The APIUrl is relative so it works on the deployed Netlify site.
-// For local development, this requires 'netlify dev' or manually setting the full URL 
-// (e.g. 'https://seu-site.netlify.app/.netlify/identity') if you are just opening index.html
-const goTrueAuth = new GoTrue({
-  APIUrl: '/.netlify/identity',
-  setCookie: true,
-});
+const KEYS = {
+    USERS: 'app_users',
+    CURRENT_SESSION: 'app_session'
+};
 
 export const auth = {
     register: async (name: string, email: string, password: string) => {
-        try {
-            const res = await goTrueAuth.signup(email, password, { full_name: name });
-            // Check if email confirmation is required (default behavior in Netlify Identity)
-            if (!res.confirmed_at) {
-                return { confirmationRequired: true };
-            }
-            // If already confirmed (e.g. disabled email confirmation), try to login
-            return auth.login(email, password);
-        } catch (error: any) {
-            // Translate common errors
-            let msg = error.message;
-            if (msg.includes('already registered')) msg = 'Este e-mail já está cadastrado.';
-            throw new Error(msg || 'Erro ao registrar');
+        // Simulating async delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const usersStr = localStorage.getItem(KEYS.USERS);
+        const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+
+        if (users.find(u => u.email === email)) {
+            throw new Error('E-mail já cadastrado.');
         }
+
+        const newUser: User = {
+            id: generateId(),
+            name,
+            email,
+            password
+        };
+
+        users.push(newUser);
+        localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+        localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(newUser));
+        
+        // Return object compatible with the page logic expecting confirmationRequired check
+        return { confirmationRequired: false };
     },
 
     login: async (email: string, password: string) => {
-        try {
-             const user = await goTrueAuth.login(email, password);
-             return mapUser(user);
-        } catch (error: any) {
-             let msg = error.message;
-             if (msg.includes('invalid_grant')) msg = 'E-mail ou senha inválidos.';
-             throw new Error(msg || 'Erro ao entrar');
+        // Simulating async delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const usersStr = localStorage.getItem(KEYS.USERS);
+        const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+        
+        const user = users.find(u => u.email === email && u.password === password);
+        if (!user) {
+            throw new Error('E-mail ou senha inválidos.');
         }
+
+        localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+        return user;
     },
 
     logout: async () => {
-        try {
-            const user = goTrueAuth.currentUser();
-            if (user) await user.logout();
-            window.location.href = '#/login';
-        } catch (error) {
-            console.error(error);
-            window.location.href = '#/login';
-        }
+        localStorage.removeItem(KEYS.CURRENT_SESSION);
+        window.location.href = '#/login';
     },
 
     getCurrentUser: (): User | null => {
-        const user = goTrueAuth.currentUser();
-        return user ? mapUser(user) : null;
+        const session = localStorage.getItem(KEYS.CURRENT_SESSION);
+        return session ? JSON.parse(session) : null;
     },
 
     isAuthenticated: () => {
-        return !!goTrueAuth.currentUser();
+        return !!localStorage.getItem(KEYS.CURRENT_SESSION);
     }
 };
-
-function mapUser(goTrueUser: any): User {
-    return {
-        id: goTrueUser.id,
-        email: goTrueUser.email,
-        name: goTrueUser.user_metadata?.full_name || goTrueUser.email.split('@')[0]
-    };
-}
