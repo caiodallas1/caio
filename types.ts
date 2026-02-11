@@ -1,3 +1,10 @@
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  // Password is handled by Netlify Identity (GoTrue)
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -71,6 +78,8 @@ export interface Settings {
   quoteValidityDays: number;
   quoteTerms: string;
   statusesConsideredSale: OrderStatus[];
+  nextOrderNumber: number;
+  paymentMethods: string[];
 }
 
 // Default Settings
@@ -82,5 +91,7 @@ export const DEFAULT_SETTINGS: Settings = {
   logoUrl: '',
   quoteValidityDays: 15,
   quoteTerms: 'Pagamento: 50% na aprovação e 50% na entrega.\nPrazo de entrega a combinar.',
-  statusesConsideredSale: [OrderStatus.DELIVERED, OrderStatus.APPROVED, OrderStatus.READY, OrderStatus.PRODUCTION]
+  statusesConsideredSale: [OrderStatus.DELIVERED, OrderStatus.APPROVED, OrderStatus.READY, OrderStatus.PRODUCTION],
+  nextOrderNumber: 1,
+  paymentMethods: ['Pix', 'Cartão de Crédito', 'Dinheiro', 'Boleto']
 };

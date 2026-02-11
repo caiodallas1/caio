@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { db } from '../services/db';
 import { Settings, OrderStatus } from '../types';
+import { Plus, X } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<Settings>(db.settings.get());
+  const [newMethod, setNewMethod] = useState('');
   
   const handleSave = () => {
     db.settings.save(settings);
@@ -29,6 +31,17 @@ export const SettingsPage: React.FC = () => {
     } else {
       setSettings({ ...settings, statusesConsideredSale: [...current, status] });
     }
+  };
+
+  const addPaymentMethod = () => {
+      if (newMethod && !settings.paymentMethods.includes(newMethod)) {
+          setSettings({ ...settings, paymentMethods: [...settings.paymentMethods, newMethod] });
+          setNewMethod('');
+      }
+  };
+
+  const removePaymentMethod = (method: string) => {
+      setSettings({ ...settings, paymentMethods: settings.paymentMethods.filter(m => m !== method) });
   };
 
   return (
@@ -66,8 +79,31 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-        <h3 className="font-bold border-b pb-2">Regras de Negócio</h3>
+        <h3 className="font-bold border-b pb-2">Regras de Negócio & Pagamento</h3>
         
+        <div>
+            <label className="block text-sm font-medium mb-2">Formas de Pagamento Aceitas</label>
+            <div className="flex gap-2 mb-3">
+                <input 
+                    className="flex-1 border rounded p-2 text-sm" 
+                    placeholder="Nova forma (ex: Pix Nubank)"
+                    value={newMethod}
+                    onChange={e => setNewMethod(e.target.value)}
+                />
+                <button type="button" onClick={addPaymentMethod} className="bg-slate-100 p-2 rounded hover:bg-slate-200">
+                    <Plus size={20} />
+                </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+                {settings.paymentMethods.map(method => (
+                    <span key={method} className="bg-blue-50 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                        {method}
+                        <button onClick={() => removePaymentMethod(method)} className="text-blue-400 hover:text-blue-600"><X size={14}/></button>
+                    </span>
+                ))}
+            </div>
+        </div>
+
         <div>
             <label className="block text-sm font-medium mb-2">Quais status contam como "Venda" no Dashboard?</label>
             <div className="grid grid-cols-2 gap-2">
@@ -91,7 +127,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <button onClick={handleSave} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-700">Salvar Tudo</button>
+      <button onClick={handleSave} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-yellow-700 shadow-md">Salvar Tudo</button>
     </div>
   );
 };

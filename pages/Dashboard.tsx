@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { db } from '../services/db';
 import { Order, OrderStatus } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, Printer } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -10,7 +11,6 @@ export const Dashboard: React.FC = () => {
   const settings = db.settings.get();
   const orders = db.orders.list();
   const expenses = db.expenses.list();
-  const products = db.products.list();
 
   // Calculation Logic
   const metrics = useMemo(() => {
@@ -46,14 +46,17 @@ export const Dashboard: React.FC = () => {
       
       let orderRevenue = orderSubtotal - discountVal;
 
-      // Freight Logic
+      // Freight Logic:
+      // If charged to customer: Adds to revenue. Does NOT add to cost (Profit 100% or Repass).
+      // If NOT charged: Does NOT add to revenue. Adds to cost (You pay).
       if (order.freightChargedToCustomer) {
         orderRevenue += order.freightPrice;
+      } else {
+        totalFreightCost += order.freightPrice;
       }
       
       totalRevenue += orderRevenue;
       totalCostGoods += orderCost;
-      totalFreightCost += order.freightPrice;
     });
 
     totalExpenses = monthExpenses.reduce((acc, curr) => acc + curr.amount, 0);
@@ -74,15 +77,20 @@ export const Dashboard: React.FC = () => {
         const day = order.date.split('-')[2];
         const prev = dailyDataMap.get(day) || { day, Vendas: 0, Lucro: 0 };
         
-        // Re-calculate basic order revenue/profit for the chart
         let sub = 0;
         let cst = 0;
         order.items.forEach(i => { sub += i.unitPrice * i.quantity; cst += i.unitCost * i.quantity; });
         const disc = order.discountType === 'money' ? order.discount : (sub * order.discount/100);
         let rev = sub - disc;
-        if(order.freightChargedToCustomer) rev += order.freightPrice;
         
-        const prof = rev - (cst + order.freightPrice);
+        let freightCostForThisOrder = 0;
+        if(order.freightChargedToCustomer) {
+            rev += order.freightPrice;
+        } else {
+            freightCostForThisOrder = order.freightPrice;
+        }
+        
+        const prof = rev - (cst + freightCostForThisOrder);
 
         dailyDataMap.set(day, {
             day,
@@ -90,11 +98,6 @@ export const Dashboard: React.FC = () => {
             Lucro: prev.Lucro + prof
         });
     });
-
-    // Subtract daily portion of monthly expenses? 
-    // Usually dashboards show operational profit on orders vs total expenses separate, 
-    // but to graph "Daily Profit" is tricky with lumped monthly expenses. 
-    // We will graph Order Profit vs Order Sales.
     
     const chartData = Array.from(dailyDataMap.values()).sort((a,b) => parseInt(a.day) - parseInt(b.day));
 
@@ -116,12 +119,21 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800">Dashboard Financeiro</h2>
-        <input 
-          type="month" 
-          value={selectedMonth} 
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="border rounded-md px-3 py-2 bg-white text-slate-700"
-        />
+        <div className="flex gap-2">
+            <Link 
+                to={`/print/report/${selectedMonth}`} 
+                target="_blank"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-slate-700 hover:bg-gray-50 text-sm font-medium"
+            >
+                <Printer size={16} /> Exportar Relatório
+            </Link>
+            <input 
+              type="month" 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="border rounded-md px-3 py-2 bg-white text-slate-700"
+            />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -139,10 +151,10 @@ export const Dashboard: React.FC = () => {
           sub={`Margem: ${metrics.margin.toFixed(1)}%`}
         />
         <MetricCard 
-          title="Custos (Prod + Frete)" 
+          title="Custos (Prod + Frete Pago)" 
           value={formatMoney(metrics.totalCostGoods + metrics.totalFreightCost)} 
           icon={<Package className="text-orange-500" />} 
-          sub={`Prod: ${formatMoney(metrics.totalCostGoods)} | Frete: ${formatMoney(metrics.totalFreightCost)}`}
+          sub={`Prod: ${formatMoney(metrics.totalCostGoods)} | Frete Pago: ${formatMoney(metrics.totalFreightCost)}`}
         />
         <MetricCard 
           title="Despesas Fixas" 

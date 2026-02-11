@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Package, ShoppingCart, DollarSign, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { auth } from '../services/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,11 +21,16 @@ const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, lab
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const user = auth.getCurrentUser();
 
-  // If we are on the print page, don't show layout
-  if (location.pathname.startsWith('/print/')) {
+  // If we are on the print page or auth pages, don't show layout
+  if (location.pathname.startsWith('/print/') || location.pathname === '/login' || location.pathname === '/register') {
     return <>{children}</>;
   }
+
+  const handleLogout = async () => {
+      await auth.logout();
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -35,6 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">G</div>
             Gestor Pro
           </h1>
+          <p className="text-xs text-slate-400 mt-2 truncate">Olá, {user?.name}</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -49,7 +56,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </nav>
 
         <div className="p-4 border-t border-gray-100">
-          <div className="text-xs text-center text-gray-400">Versão 1.0.0</div>
+          <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 w-full rounded-lg transition-colors">
+            <LogOut size={20} />
+            <span className="font-medium">Sair</span>
+          </button>
         </div>
       </aside>
 
@@ -58,9 +68,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Mobile Header (simplified) */}
         <header className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
             <h1 className="font-bold text-slate-800">Gestor Pro</h1>
-            <nav className="flex gap-4">
+            <nav className="flex gap-4 items-center">
                <Link to="/" className="text-slate-600"><LayoutDashboard size={20}/></Link>
                <Link to="/orders" className="text-slate-600"><ShoppingCart size={20}/></Link>
+               <button onClick={handleLogout} className="text-red-500"><LogOut size={20}/></button>
             </nav>
         </header>
 

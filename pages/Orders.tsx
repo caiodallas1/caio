@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
-import { Plus, Search, FileText, Trash2, Edit2, CheckCircle, Printer } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit2, CheckCircle, Printer, Calendar, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void }) => {
   const navigate = useNavigate();
   const [products] = useState<Product[]>(db.products.list());
-  const [clients] = useState<Client[]>(db.clients.list());
+  const [clients, setClients] = useState<Client[]>(db.clients.list());
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   
+  // Quick Client Creation State
+  const [isNewClientMode, setIsNewClientMode] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+
   const [order, setOrder] = useState<Order>({
-    id: generateId(),
+    id: '', 
     clientId: '',
     date: new Date().toISOString().split('T')[0],
     status: OrderStatus.DRAFT,
@@ -25,9 +31,16 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
   });
 
   useEffect(() => {
+    // Load payment methods from settings
+    const settings = db.settings.get();
+    setPaymentMethods(settings.paymentMethods);
+
     if (orderId) {
       const found = db.orders.get(orderId);
       if (found) setOrder(found);
+    } else {
+        const nextId = db.orders.getNextOrderId();
+        setOrder(prev => ({ ...prev, id: nextId }));
     }
   }, [orderId]);
 
@@ -77,8 +90,13 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
     let totalRevenue = subtotal - discountValue;
     if (order.freightChargedToCustomer) totalRevenue += order.freightPrice;
 
-    // Cost: Items Cost + Freight (Freight is ALWAYS a cost to us)
-    const totalCost = itemCost + order.freightPrice;
+    // Cost Calculation Logic Update:
+    // If charged to customer: Cost = Items Cost (Freight is profit/neutral repass, expense not tracked here)
+    // If NOT charged to customer: Cost = Items Cost + Freight Cost (You pay)
+    let totalCost = itemCost;
+    if (!order.freightChargedToCustomer) {
+        totalCost += order.freightPrice;
+    }
 
     const profit = totalRevenue - totalCost;
 
@@ -89,8 +107,35 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!order.clientId) return alert('Selecione um cliente');
-    db.orders.save(order);
+    
+    let finalClientId = order.clientId;
+
+    if (isNewClientMode) {
+        if (!newClientName || !newClientPhone) {
+            return alert("Por favor, preencha Nome e WhatsApp do novo cliente.");
+        }
+        const newClient: Client = {
+            id: generateId(),
+            name: newClientName,
+            whatsapp: newClientPhone,
+            email: '',
+            doc: '',
+            address: '',
+            notes: 'Criado via Pedido Rápido'
+        };
+        db.clients.save(newClient);
+        finalClientId = newClient.id;
+        setClients(db.clients.list());
+    } else {
+        if (!order.clientId) return alert('Selecione um cliente');
+    }
+
+    const finalOrder = {
+        ...order,
+        clientId: finalClientId
+    };
+
+    db.orders.save(finalOrder);
     onClose();
   };
 
@@ -99,16 +144,19 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <form onSubmit={handleSave} className="space-y-6">
           {/* Header */}
-          <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
-             <h2 className="text-2xl font-bold">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
+          <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border-l-4 border-primary">
+             <div>
+                <h2 className="text-2xl font-bold text-slate-800">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
+                <div className="text-sm font-mono text-primary font-bold mt-1">#{order.id}</div>
+             </div>
              <div className="flex gap-2">
                <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
                {orderId && (
                   <Link to={`/print/order/${order.id}`} target="_blank" className="px-4 py-2 bg-slate-800 text-white rounded-lg flex items-center gap-2">
-                    <Printer size={16} /> PDF/Imprimir
+                    <Printer size={16} /> PDF
                   </Link>
                )}
-               <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium">Salvar Pedido</button>
+               <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-yellow-700 font-medium shadow-md">Salvar Pedido</button>
              </div>
           </div>
 
@@ -117,12 +165,41 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
             <div className="md:col-span-2 space-y-6">
                <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Cliente *</label>
-                        <select required className="w-full border rounded-lg p-2" value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
-                            <option value="">Selecione...</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                    <div className="col-span-2 md:col-span-1">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium">Cliente *</label>
+                            <button 
+                                type="button" 
+                                onClick={() => setIsNewClientMode(!isNewClientMode)} 
+                                className="text-xs text-primary font-bold flex items-center gap-1 hover:underline"
+                            >
+                                {isNewClientMode ? 'Selecionar Existente' : '+ Novo Cliente'}
+                            </button>
+                        </div>
+                        
+                        {isNewClientMode ? (
+                            <div className="space-y-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                <input 
+                                    required={isNewClientMode}
+                                    placeholder="Nome do Cliente" 
+                                    className="w-full border rounded p-2 text-sm" 
+                                    value={newClientName}
+                                    onChange={e => setNewClientName(e.target.value)}
+                                />
+                                <input 
+                                    required={isNewClientMode}
+                                    placeholder="WhatsApp" 
+                                    className="w-full border rounded p-2 text-sm" 
+                                    value={newClientPhone}
+                                    onChange={e => setNewClientPhone(e.target.value)}
+                                />
+                            </div>
+                        ) : (
+                            <select required className="w-full border rounded-lg p-2" value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
+                                <option value="">Selecione...</option>
+                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Data</label>
@@ -140,7 +217,7 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
                <div className="bg-white p-6 rounded-xl shadow-sm">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-lg">Itens do Pedido</h3>
-                    <button type="button" onClick={addItem} className="text-primary text-sm font-medium flex items-center gap-1">+ Adicionar Item</button>
+                    <button type="button" onClick={addItem} className="text-primary text-sm font-bold flex items-center gap-1 hover:bg-yellow-50 px-2 py-1 rounded">+ Adicionar Item</button>
                   </div>
                   
                   <div className="space-y-4">
@@ -205,14 +282,14 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
                         </div>
                         <p className="text-xs text-blue-600 mt-1">
                             {order.freightChargedToCustomer 
-                                ? "O valor entra na Venda e no Custo (repasse)." 
-                                : "O valor entra só no Custo (você paga)."}
+                                ? "Adicionado à Venda. (Não conta como custo)." 
+                                : "NÃO entra na Venda. (Conta como custo/despesa)."}
                         </p>
                     </div>
 
                     <div className="pt-4 border-t space-y-2">
                         <div className="flex justify-between text-sm"><span>Subtotal Itens:</span> <span>R$ {totals.subtotal.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-sm text-red-500"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div> {/* Simplified for display */}
+                        <div className="flex justify-between text-sm text-red-500"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div>
                         {order.freightChargedToCustomer && (
                              <div className="flex justify-between text-sm text-blue-600"><span>Frete (Receita):</span> <span>+ R$ {order.freightPrice.toFixed(2)}</span></div>
                         )}
@@ -224,7 +301,10 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
 
                     <div className="bg-gray-50 p-3 rounded text-xs space-y-1 text-gray-500">
                          <div className="flex justify-between"><span>Custos Itens:</span> <span>R$ {order.items.reduce((a, b) => a + (b.unitCost * b.quantity), 0).toFixed(2)}</span></div>
-                         <div className="flex justify-between"><span>Custo Frete:</span> <span>R$ {order.freightPrice.toFixed(2)}</span></div>
+                         <div className="flex justify-between">
+                             <span>Custo Frete:</span> 
+                             <span>R$ {(!order.freightChargedToCustomer ? order.freightPrice : 0).toFixed(2)}</span>
+                        </div>
                          <div className={`flex justify-between font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             <span>Lucro Estimado:</span> 
                             <span>R$ {totals.profit.toFixed(2)}</span>
@@ -234,7 +314,17 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
 
                 <div className="bg-white p-6 rounded-xl shadow-sm">
                     <label className="block text-sm font-medium mb-1">Forma de Pagamento</label>
-                    <input className="w-full border rounded p-2 mb-3" value={order.paymentMethod} onChange={e => setOrder({...order, paymentMethod: e.target.value})} placeholder="Ex: Pix, 50/50" />
+                    <select 
+                        className="w-full border rounded p-2 mb-3" 
+                        value={order.paymentMethod} 
+                        onChange={e => setOrder({...order, paymentMethod: e.target.value})}
+                    >
+                        <option value="">Selecione...</option>
+                        {paymentMethods.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
+                    {paymentMethods.length === 0 && <p className="text-xs text-red-500 mb-2">Configure os métodos de pagamento em Configurações.</p>}
                     
                     <label className="block text-sm font-medium mb-1">Observações Internas</label>
                     <textarea className="w-full border rounded p-2" rows={3} value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} />
@@ -252,7 +342,11 @@ export const Orders: React.FC = () => {
   const [clients, setClients] = useState<Client[]>(db.clients.list());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Filters
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [dateFilterType, setDateFilterType] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM'>('ALL');
+  const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     setOrders(db.orders.list());
@@ -278,24 +372,70 @@ export const Orders: React.FC = () => {
     }
   };
 
+  const isInDateRange = (orderDateStr: string) => {
+      const orderDate = new Date(orderDateStr);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const oDate = new Date(orderDate);
+      oDate.setHours(0,0,0,0);
+
+      if (dateFilterType === 'ALL') return true;
+      if (dateFilterType === 'CUSTOM') return orderDateStr === customDate;
+      if (dateFilterType === 'TODAY') {
+          return oDate.getTime() === today.getTime();
+      }
+      if (dateFilterType === 'WEEK') {
+          // simple week check (last 7 days) or current week
+          const oneWeekAgo = new Date(today);
+          oneWeekAgo.setDate(today.getDate() - 7);
+          return oDate >= oneWeekAgo && oDate <= today;
+      }
+      if (dateFilterType === 'MONTH') {
+          return oDate.getMonth() === today.getMonth() && oDate.getFullYear() === today.getFullYear();
+      }
+      return true;
+  };
+
   const filtered = orders
     .filter(o => filterStatus === 'ALL' || o.status === filterStatus)
+    .filter(o => isInDateRange(o.date))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800">Pedidos</h2>
         <button 
           onClick={() => setIsCreating(true)}
-          className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          className="bg-primary hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-md"
         >
           <Plus size={18} /> Novo Pedido
         </button>
       </div>
 
+      {/* Date Filters Toolbar */}
+      <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-wrap gap-2 items-center">
+        <div className="flex items-center gap-1 text-slate-500 mr-2">
+            <Calendar size={18} />
+            <span className="text-sm font-semibold">Período:</span>
+        </div>
+        <button onClick={() => setDateFilterType('ALL')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}`}>Tudo</button>
+        <button onClick={() => setDateFilterType('TODAY')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'TODAY' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Hoje</button>
+        <button onClick={() => setDateFilterType('WEEK')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'WEEK' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Semana</button>
+        <button onClick={() => setDateFilterType('MONTH')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'MONTH' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Mês</button>
+        <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <span className="text-xs text-slate-500">Data:</span>
+            <input 
+                type="date" 
+                value={customDate} 
+                onChange={e => { setCustomDate(e.target.value); setDateFilterType('CUSTOM'); }}
+                className={`border rounded px-2 py-1 text-sm ${dateFilterType === 'CUSTOM' ? 'border-primary ring-1 ring-primary' : 'border-gray-200'}`} 
+            />
+        </div>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-2">
-        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border'}`}>Todos</button>
+        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border'}`}>Status: Todos</button>
         {Object.values(OrderStatus).map(s => (
             <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === s ? 'bg-slate-800 text-white' : 'bg-white border'}`}>{s}</button>
         ))}
@@ -323,8 +463,8 @@ export const Orders: React.FC = () => {
                 return (
                   <tr key={order.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
-                        <div className="font-mono text-xs text-slate-400">#{order.id.substring(0,6)}</div>
-                        <div className="text-slate-800">{new Date(order.date).toLocaleDateString('pt-BR')}</div>
+                        <div className="font-mono text-sm font-bold text-primary">#{order.id}</div>
+                        <div className="text-xs text-slate-500">{new Date(order.date).toLocaleDateString('pt-BR')}</div>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">{getClientName(order.clientId)}</td>
                     <td className="px-6 py-4">
