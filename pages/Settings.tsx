@@ -1,21 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
-import { Settings, OrderStatus } from '../types';
+import { Settings, OrderStatus, DEFAULT_SETTINGS } from '../types';
 import { Plus, X } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const [settings, setSettings] = useState<Settings>(db.settings.get());
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [newMethod, setNewMethod] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    db.settings.get().then(s => {
+        setSettings(s);
+        setLoading(false);
+    });
+  }, []);
   
-  const handleSave = () => {
-    db.settings.save(settings);
+  const handleSave = async () => {
+    await db.settings.save(settings);
     alert('Configurações salvas!');
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 500000) return alert('A imagem deve ter menos de 500KB para caber no armazenamento local.');
+      if (file.size > 500000) return alert('A imagem deve ter menos de 500KB para caber no banco.');
       const reader = new FileReader();
       reader.onloadend = () => {
         setSettings({ ...settings, logoUrl: reader.result as string });
@@ -43,6 +51,8 @@ export const SettingsPage: React.FC = () => {
   const removePaymentMethod = (method: string) => {
       setSettings({ ...settings, paymentMethods: settings.paymentMethods.filter(m => m !== method) });
   };
+
+  if (loading) return <div>Carregando...</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">

@@ -10,9 +10,17 @@ export const PrintReport: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
-    setSettings(db.settings.get());
-    setOrders(db.orders.list());
-    setExpenses(db.expenses.list());
+    const load = async () => {
+        const [s, o, e] = await Promise.all([
+            db.settings.get(),
+            db.orders.list(),
+            db.expenses.list()
+        ]);
+        setSettings(s);
+        setOrders(o);
+        setExpenses(e);
+    };
+    load();
   }, []);
 
   const metrics = useMemo(() => {
@@ -153,7 +161,7 @@ export const PrintReport: React.FC = () => {
                         {Object.entries(metrics.expensesByCategory).map(([cat, val]) => (
                              <tr key={cat}>
                                 <td className="py-1 pl-4 text-slate-500 text-xs">{cat}</td>
-                                <td className="py-1 text-right text-slate-500 text-xs">- {formatMoney(val)}</td>
+                                <td className="py-1 text-right text-slate-500 text-xs">- {formatMoney(val as number)}</td>
                             </tr>
                         ))}
                         <tr className="border-t-2 border-slate-800 text-lg">

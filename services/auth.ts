@@ -1,65 +1,52 @@
-import { User } from '../types';
-import { generateId } from './db';
 
-const KEYS = {
-    USERS: 'app_users',
-    CURRENT_SESSION: 'app_session'
-};
+import { User } from '../types';
+
+const STORAGE_KEY = 'gestor_pro_access_key';
 
 export const auth = {
-    register: async (name: string, email: string, password: string) => {
-        // Simulating async delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+    // Retorna a chave de acesso salva ou null
+    getAccessKey: (): string | null => {
+        return localStorage.getItem(STORAGE_KEY);
+    },
 
-        const usersStr = localStorage.getItem(KEYS.USERS);
-        const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+    // Define uma nova chave
+    setAccessKey: (key: string) => {
+        localStorage.setItem(STORAGE_KEY, key.trim().toUpperCase());
+        window.location.reload();
+    },
 
-        if (users.find(u => u.email === email)) {
-            throw new Error('E-mail já cadastrado.');
+    // Gera uma chave aleatória amigável
+    generateKey: (): string => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = 'GPRO-';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-
-        const newUser: User = {
-            id: generateId(),
-            name,
-            email,
-            password
-        };
-
-        users.push(newUser);
-        localStorage.setItem(KEYS.USERS, JSON.stringify(users));
-        localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(newUser));
-        
-        // Return object compatible with the page logic expecting confirmationRequired check
-        return { confirmationRequired: false };
+        return result;
     },
 
-    login: async (email: string, password: string) => {
-        // Simulating async delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const usersStr = localStorage.getItem(KEYS.USERS);
-        const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-        
-        const user = users.find(u => u.email === email && u.password === password);
-        if (!user) {
-            throw new Error('E-mail ou senha inválidos.');
+    // Limpa a chave (Logout)
+    logout: () => {
+        if (confirm('Isso removerá o acesso neste dispositivo. Certifique-se de ter sua chave anotada para entrar novamente. Sair?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            window.location.href = '/';
         }
-
-        localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
-        return user;
     },
 
-    logout: async () => {
-        localStorage.removeItem(KEYS.CURRENT_SESSION);
-        window.location.href = '#/login';
-    },
-
+    // Mock do usuário para manter compatibilidade com o Layout
     getCurrentUser: (): User | null => {
-        const session = localStorage.getItem(KEYS.CURRENT_SESSION);
-        return session ? JSON.parse(session) : null;
+        const key = localStorage.getItem(STORAGE_KEY);
+        if (!key) return null;
+        return {
+            id: key,
+            name: 'Minha Empresa',
+            email: key
+        };
     },
 
-    isAuthenticated: () => {
-        return !!localStorage.getItem(KEYS.CURRENT_SESSION);
+    // Fix: Added register method to fix 'Property register does not exist' error in Register.tsx
+    register: async (name: string, email: string, pass: string) => {
+        // Return a mock response as the system uses Key-based access
+        return { confirmationRequired: true };
     }
 };

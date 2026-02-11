@@ -8,28 +8,35 @@ export const Clients: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Partial<Client>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const fetchClients = async () => {
+      const data = await db.clients.list();
+      setClients(data);
+      setLoading(false);
+  };
 
   useEffect(() => {
-    setClients(db.clients.list());
+    fetchClients();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const newClient = {
       ...currentClient,
       id: currentClient.id || generateId(),
     } as Client;
     
-    db.clients.save(newClient);
-    setClients(db.clients.list());
+    await db.clients.save(newClient);
+    await fetchClients();
     setIsModalOpen(false);
     setCurrentClient({});
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      db.clients.delete(id);
-      setClients(db.clients.list());
+      await db.clients.delete(id);
+      await fetchClients();
     }
   };
 
@@ -65,49 +72,53 @@ export const Clients: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
-              <tr>
-                <th className="px-6 py-4">Nome</th>
-                <th className="px-6 py-4">Contato</th>
-                <th className="px-6 py-4">CPF/CNPJ</th>
-                <th className="px-6 py-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(client => (
-                <tr key={client.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{client.name}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1"><Phone size={14} /> {client.whatsapp}</div>
-                      {client.email && <div className="flex items-center gap-1 text-slate-400"><Mail size={14} /> {client.email}</div>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">{client.doc}</td>
-                  <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => { setCurrentClient(client); setIsModalOpen(true); }}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(client.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
+          {loading ? (
+              <div className="p-8 text-center text-gray-500">Carregando...</div>
+          ) : (
+            <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-400">Nenhum cliente encontrado.</td>
+                    <th className="px-6 py-4">Nome</th>
+                    <th className="px-6 py-4">Contato</th>
+                    <th className="px-6 py-4">CPF/CNPJ</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                {filtered.map(client => (
+                    <tr key={client.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{client.name}</td>
+                    <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1"><Phone size={14} /> {client.whatsapp}</div>
+                        {client.email && <div className="flex items-center gap-1 text-slate-400"><Mail size={14} /> {client.email}</div>}
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">{client.doc}</td>
+                    <td className="px-6 py-4 text-right">
+                        <button 
+                        onClick={() => { setCurrentClient(client); setIsModalOpen(true); }}
+                        className="text-blue-600 hover:text-blue-800 mr-3"
+                        >
+                        <Edit size={18} />
+                        </button>
+                        <button 
+                        onClick={() => handleDelete(client.id)}
+                        className="text-red-600 hover:text-red-800"
+                        >
+                        <Trash2 size={18} />
+                        </button>
+                    </td>
+                    </tr>
+                ))}
+                {filtered.length === 0 && (
+                    <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-400">Nenhum cliente encontrado.</td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
+          )}
         </div>
       </div>
 

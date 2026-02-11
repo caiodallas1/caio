@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Product } from '../types';
-import { Plus, Edit, Trash2, Search, Tag } from 'lucide-react';
+import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Product>>({ active: true, price: 0, cost: 0 });
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const fetchProducts = async () => {
+      const data = await db.products.list();
+      setProducts(data);
+      setLoading(false);
+  };
 
   useEffect(() => {
-    setProducts(db.products.list());
+    fetchProducts();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const newProduct = {
       ...current,
@@ -22,16 +29,16 @@ export const Products: React.FC = () => {
       cost: Number(current.cost),
     } as Product;
     
-    db.products.save(newProduct);
-    setProducts(db.products.list());
+    await db.products.save(newProduct);
+    await fetchProducts();
     setIsModalOpen(false);
     setCurrent({ active: true, price: 0, cost: 0 });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza?')) {
-      db.products.delete(id);
-      setProducts(db.products.list());
+      await db.products.delete(id);
+      await fetchProducts();
     }
   };
 
@@ -64,6 +71,7 @@ export const Products: React.FC = () => {
           </div>
         </div>
         <div className="overflow-x-auto">
+          {loading ? <div className="p-8 text-center text-gray-500">Carregando...</div> : (
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
               <tr>
@@ -100,6 +108,7 @@ export const Products: React.FC = () => {
               {filtered.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

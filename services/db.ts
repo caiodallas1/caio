@@ -1,113 +1,130 @@
+
 import { Client, Product, Order, Expense, Settings, DEFAULT_SETTINGS } from '../types';
 import { auth } from './auth';
 
-// Simple ID generator
+// Helper para gerenciar o armazenamento local baseado na Chave de Acesso
+const getStorageKey = (collection: string) => {
+    const workplaceId = auth.getAccessKey();
+    if (!workplaceId) throw new Error("Chave de acesso não configurada");
+    return `gpro_${workplaceId}_${collection}`;
+};
+
+const getLocalData = <T>(collection: string): T[] => {
+    const data = localStorage.getItem(getStorageKey(collection));
+    return data ? JSON.parse(data) : [];
+};
+
+const saveLocalData = <T>(collection: string, data: T[]) => {
+    localStorage.setItem(getStorageKey(collection), JSON.stringify(data));
+};
+
 export const generateId = () => Math.random().toString(36).substring(2, 9);
-
-// Helper to get keys based on current user
-const getKeys = () => {
-    const user = auth.getCurrentUser();
-    const suffix = user ? `_${user.id}` : ''; // If no user (shouldn't happen in app), no suffix
-    return {
-        CLIENTS: `app_clients${suffix}`,
-        PRODUCTS: `app_products${suffix}`,
-        ORDERS: `app_orders${suffix}`,
-        EXPENSES: `app_expenses${suffix}`,
-        SETTINGS: `app_settings${suffix}`
-    };
-};
-
-const get = <T>(key: string, defaultValue: T): T => {
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : defaultValue;
-};
-
-const set = <T>(key: string, value: T) => {
-  localStorage.setItem(key, JSON.stringify(value));
-};
 
 export const db = {
   clients: {
-    list: () => get<Client[]>(getKeys().CLIENTS, []),
-    save: (data: Client) => {
-      const k = getKeys().CLIENTS;
-      const list = get<Client[]>(k, []);
+    list: async (): Promise<Client[]> => {
+      return getLocalData<Client>('clients');
+    },
+    save: async (data: Client) => {
+      const list = getLocalData<Client>('clients');
       const index = list.findIndex(i => i.id === data.id);
-      if (index >= 0) list[index] = data;
-      else list.push(data);
-      set(k, list);
+      if (index >= 0) {
+        list[index] = data;
+      } else {
+        list.push(data);
+      }
+      saveLocalData('clients', list);
     },
-    delete: (id: string) => {
-      const k = getKeys().CLIENTS;
-      const list = get<Client[]>(k, []);
-      set(k, list.filter(i => i.id !== id));
+    delete: async (id: string) => {
+      const list = getLocalData<Client>('clients');
+      saveLocalData('clients', list.filter(i => i.id !== id));
     },
-    get: (id: string) => get<Client[]>(getKeys().CLIENTS, []).find(c => c.id === id)
+    get: async (id: string): Promise<Client | undefined> => {
+      const list = getLocalData<Client>('clients');
+      return list.find(i => i.id === id);
+    }
   },
   products: {
-    list: () => get<Product[]>(getKeys().PRODUCTS, []),
-    save: (data: Product) => {
-      const k = getKeys().PRODUCTS;
-      const list = get<Product[]>(k, []);
+    list: async (): Promise<Product[]> => {
+      return getLocalData<Product>('products');
+    },
+    save: async (data: Product) => {
+      const list = getLocalData<Product>('products');
       const index = list.findIndex(i => i.id === data.id);
-      if (index >= 0) list[index] = data;
-      else list.push(data);
-      set(k, list);
+      if (index >= 0) {
+        list[index] = data;
+      } else {
+        list.push(data);
+      }
+      saveLocalData('products', list);
     },
-    delete: (id: string) => {
-      const k = getKeys().PRODUCTS;
-      const list = get<Product[]>(k, []);
-      set(k, list.filter(i => i.id !== id));
+    delete: async (id: string) => {
+      const list = getLocalData<Product>('products');
+      saveLocalData('products', list.filter(i => i.id !== id));
     },
-    get: (id: string) => get<Product[]>(getKeys().PRODUCTS, []).find(p => p.id === id)
+    get: async (id: string): Promise<Product | undefined> => {
+      const list = getLocalData<Product>('products');
+      return list.find(i => i.id === id);
+    }
   },
   orders: {
-    list: () => get<Order[]>(getKeys().ORDERS, []),
-    save: (data: Order) => {
-      const k = getKeys().ORDERS;
-      const list = get<Order[]>(k, []);
+    list: async (): Promise<Order[]> => {
+      return getLocalData<Order>('orders');
+    },
+    save: async (data: Order) => {
+      const list = getLocalData<Order>('orders');
       const index = list.findIndex(i => i.id === data.id);
-      if (index >= 0) list[index] = data;
-      else list.push(data);
-      set(k, list);
+      if (index >= 0) {
+        list[index] = data;
+      } else {
+        list.push(data);
+      }
+      saveLocalData('orders', list);
     },
-    delete: (id: string) => {
-      const k = getKeys().ORDERS;
-      const list = get<Order[]>(k, []);
-      set(k, list.filter(i => i.id !== id));
+    delete: async (id: string) => {
+      const list = getLocalData<Order>('orders');
+      saveLocalData('orders', list.filter(i => i.id !== id));
     },
-    get: (id: string) => get<Order[]>(getKeys().ORDERS, []).find(o => o.id === id),
-    getNextOrderId: (): string => {
-        const k = getKeys().SETTINGS;
-        const settings = get<Settings>(k, DEFAULT_SETTINGS);
+    get: async (id: string): Promise<Order | undefined> => {
+      const list = getLocalData<Order>('orders');
+      return list.find(i => i.id === id);
+    },
+    getNextOrderId: async (): Promise<string> => {
+        const settings = await db.settings.get();
         const nextNum = settings.nextOrderNumber || 1;
-        
         const idStr = String(nextNum).padStart(4, '0');
-        
-        settings.nextOrderNumber = nextNum + 1;
-        set(k, settings);
-        
+        await db.settings.save({ ...settings, nextOrderNumber: nextNum + 1 });
         return idStr;
     }
   },
   expenses: {
-    list: () => get<Expense[]>(getKeys().EXPENSES, []),
-    save: (data: Expense) => {
-      const k = getKeys().EXPENSES;
-      const list = get<Expense[]>(k, []);
-      const index = list.findIndex(i => i.id === data.id);
-      if (index >= 0) list[index] = data;
-      else list.push(data);
-      set(k, list);
+    list: async (): Promise<Expense[]> => {
+      return getLocalData<Expense>('expenses');
     },
-    delete: (id: string) => {
-      const k = getKeys().EXPENSES;
-      const list = get<Expense[]>(k, []);
-      set(k, list.filter(i => i.id !== id));
+    save: async (data: Expense) => {
+      const list = getLocalData<Expense>('expenses');
+      const index = list.findIndex(i => i.id === data.id);
+      if (index >= 0) {
+        list[index] = data;
+      } else {
+        list.push(data);
+      }
+      saveLocalData('expenses', list);
+    },
+    delete: async (id: string) => {
+      const list = getLocalData<Expense>('expenses');
+      saveLocalData('expenses', list.filter(i => i.id !== id));
     }
   },
   settings: {
-    get: () => get<Settings>(getKeys().SETTINGS, DEFAULT_SETTINGS),
-    save: (data: Settings) => set(getKeys().SETTINGS, data)
+    get: async (): Promise<Settings> => {
+      const workplaceId = auth.getAccessKey();
+      const data = localStorage.getItem(`gpro_${workplaceId}_settings`);
+      return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+    },
+    save: async (data: Settings) => {
+      const workplaceId = auth.getAccessKey();
+      localStorage.setItem(`gpro_${workplaceId}_settings`, JSON.stringify(data));
+    }
   }
 };

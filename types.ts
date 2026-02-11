@@ -2,11 +2,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password: string; // Stored locally
+  // password removed, handled by Supabase
 }
 
 export interface Client {
   id: string;
+  user_id?: string;
   name: string;
   whatsapp: string;
   email: string;
@@ -17,6 +18,7 @@ export interface Client {
 
 export interface Product {
   id: string;
+  user_id?: string;
   name: string;
   description: string;
   unit: string;
@@ -47,21 +49,24 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  clientId: string;
+  user_id?: string;
+  clientId: string; // Changed from camelCase in DB, but mapped in service
+  client_id?: string; // For DB mapping
   date: string; // ISO Date YYYY-MM-DD
   status: OrderStatus;
   items: OrderItem[];
-  freightPrice: number;
-  freightChargedToCustomer: boolean;
+  freightPrice: number; // Mapped to freight_price
+  freightChargedToCustomer: boolean; // Mapped to freight_charged_to_customer
   discount: number;
-  discountType: 'money' | 'percentage';
-  paymentMethod: string;
+  discountType: 'money' | 'percentage'; // Mapped to discount_type
+  paymentMethod: string; // Mapped to payment_method
   notes: string;
   createdAt: string;
 }
 
 export interface Expense {
   id: string;
+  user_id?: string;
   date: string;
   category: string;
   description: string;

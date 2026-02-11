@@ -1,16 +1,38 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { db } from '../services/db';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, Expense, Settings, DEFAULT_SETTINGS } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Package, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [loading, setLoading] = useState(true);
   
-  const settings = db.settings.get();
-  const orders = db.orders.list();
-  const expenses = db.expenses.list();
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+      const loadData = async () => {
+          setLoading(true);
+          try {
+              const [s, o, e] = await Promise.all([
+                  db.settings.get(),
+                  db.orders.list(),
+                  db.expenses.list()
+              ]);
+              setSettings(s);
+              setOrders(o);
+              setExpenses(e);
+          } catch (error) {
+              console.error("Error loading dashboard", error);
+          } finally {
+              setLoading(false);
+          }
+      };
+      loadData();
+  }, []);
 
   // Calculation Logic
   const metrics = useMemo(() => {
@@ -46,9 +68,7 @@ export const Dashboard: React.FC = () => {
       
       let orderRevenue = orderSubtotal - discountVal;
 
-      // Freight Logic:
-      // If charged to customer: Adds to revenue. Does NOT add to cost (Profit 100% or Repass).
-      // If NOT charged: Does NOT add to revenue. Adds to cost (You pay).
+      // Freight Logic
       if (order.freightChargedToCustomer) {
         orderRevenue += order.freightPrice;
       } else {
@@ -114,6 +134,8 @@ export const Dashboard: React.FC = () => {
   }, [selectedMonth, orders, expenses, settings]);
 
   const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  if (loading) return <div className="p-8">Carregando dados...</div>;
 
   return (
     <div className="space-y-6">

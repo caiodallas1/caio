@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
-import { Plus, Search, FileText, Trash2, Edit2, CheckCircle, Printer, Calendar, UserPlus } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Printer, Calendar } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void }) => {
-  const navigate = useNavigate();
-  const [products] = useState<Product[]>(db.products.list());
-  const [clients, setClients] = useState<Client[]>(db.clients.list());
+const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: () => void, onSaved: () => void }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   
   // Quick Client Creation State
@@ -30,18 +29,35 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
     createdAt: new Date().toISOString()
   });
 
-  useEffect(() => {
-    // Load payment methods from settings
-    const settings = db.settings.get();
-    setPaymentMethods(settings.paymentMethods);
+  const [loading, setLoading] = useState(true);
 
-    if (orderId) {
-      const found = db.orders.get(orderId);
-      if (found) setOrder(found);
-    } else {
-        const nextId = db.orders.getNextOrderId();
-        setOrder(prev => ({ ...prev, id: nextId }));
-    }
+  useEffect(() => {
+    const init = async () => {
+        setLoading(true);
+        try {
+            const [p, c, s] = await Promise.all([
+                db.products.list(),
+                db.clients.list(),
+                db.settings.get()
+            ]);
+            setProducts(p);
+            setClients(c);
+            setPaymentMethods(s.paymentMethods);
+
+            if (orderId) {
+                const found = await db.orders.get(orderId);
+                if (found) setOrder(found);
+            } else {
+                const nextId = await db.orders.getNextOrderId();
+                setOrder(prev => ({ ...prev, id: nextId }));
+            }
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+    init();
   }, [orderId]);
 
   const addItem = () => {
@@ -90,9 +106,6 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
     let totalRevenue = subtotal - discountValue;
     if (order.freightChargedToCustomer) totalRevenue += order.freightPrice;
 
-    // Cost Calculation Logic Update:
-    // If charged to customer: Cost = Items Cost (Freight is profit/neutral repass, expense not tracked here)
-    // If NOT charged to customer: Cost = Items Cost + Freight Cost (You pay)
     let totalCost = itemCost;
     if (!order.freightChargedToCustomer) {
         totalCost += order.freightPrice;
@@ -105,7 +118,7 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
 
   const totals = calculateTotals();
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     let finalClientId = order.clientId;
@@ -123,9 +136,8 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
             address: '',
             notes: 'Criado via Pedido Rápido'
         };
-        db.clients.save(newClient);
+        await db.clients.save(newClient);
         finalClientId = newClient.id;
-        setClients(db.clients.list());
     } else {
         if (!order.clientId) return alert('Selecione um cliente');
     }
@@ -135,9 +147,12 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
         clientId: finalClientId
     };
 
-    db.orders.save(finalOrder);
+    await db.orders.save(finalOrder);
+    onSaved();
     onClose();
   };
+
+  if (loading) return <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center">Carregando...</div>;
 
   return (
     <div className="fixed inset-0 bg-gray-100 z-50 overflow-y-auto">
@@ -339,24 +354,35 @@ const OrderForm = ({ orderId, onClose }: { orderId?: string, onClose: () => void
 
 export const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [clients, setClients] = useState<Client[]>(db.clients.list());
+  const [clients, setClients] = useState<Client[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [dateFilterType, setDateFilterType] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM'>('ALL');
   const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0]);
 
-  useEffect(() => {
-    setOrders(db.orders.list());
-    setClients(db.clients.list());
-  }, [editingId, isCreating]);
+  const loadData = async () => {
+      setLoading(true);
+      const [o, c] = await Promise.all([
+          db.orders.list(),
+          db.clients.list()
+      ]);
+      setOrders(o);
+      setClients(c);
+      setLoading(false);
+  };
 
-  const handleDelete = (id: string) => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleDelete = async (id: string) => {
     if (confirm('Excluir este pedido?')) {
-        db.orders.delete(id);
-        setOrders(db.orders.list());
+        await db.orders.delete(id);
+        await loadData();
     }
   };
 
@@ -443,6 +469,7 @@ export const Orders: React.FC = () => {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
+          {loading ? <div className="p-8 text-center text-gray-500">Carregando...</div> : (
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
               <tr>
@@ -488,6 +515,7 @@ export const Orders: React.FC = () => {
               {filtered.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Nenhum pedido encontrado.</td></tr>}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 
@@ -495,6 +523,7 @@ export const Orders: React.FC = () => {
         <OrderForm 
             orderId={editingId || undefined} 
             onClose={() => { setIsCreating(false); setEditingId(null); }} 
+            onSaved={loadData}
         />
       )}
     </div>

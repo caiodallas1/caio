@@ -11,27 +11,34 @@ export const Expenses: React.FC = () => {
     category: 'Outros',
     recurrent: false
   });
+  const [loading, setLoading] = useState(true);
+
+  const fetchExpenses = async () => {
+      const data = await db.expenses.list();
+      setExpenses(data.sort((a,b) => b.date.localeCompare(a.date)));
+      setLoading(false);
+  };
 
   useEffect(() => {
-    setExpenses(db.expenses.list().sort((a,b) => b.date.localeCompare(a.date)));
+    fetchExpenses();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    db.expenses.save({
+    await db.expenses.save({
         ...form,
         id: generateId(),
         amount: Number(form.amount)
     } as Expense);
     
-    setExpenses(db.expenses.list().sort((a,b) => b.date.localeCompare(a.date)));
+    await fetchExpenses();
     setForm({ date: new Date().toISOString().split('T')[0], amount: 0, category: 'Outros', description: '', recurrent: false });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if(confirm('Excluir despesa?')) {
-        db.expenses.delete(id);
-        setExpenses(db.expenses.list().sort((a,b) => b.date.localeCompare(a.date)));
+        await db.expenses.delete(id);
+        await fetchExpenses();
     }
   };
 
@@ -74,6 +81,7 @@ export const Expenses: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b font-bold text-slate-800">Histórico de Despesas</div>
             <div className="overflow-x-auto">
+                {loading ? <div className="p-8 text-center text-gray-500">Carregando...</div> : (
                 <table className="w-full text-left text-sm text-slate-600">
                     <thead className="bg-slate-50 text-slate-900 border-b">
                         <tr>
@@ -99,6 +107,7 @@ export const Expenses: React.FC = () => {
                         {expenses.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Nenhuma despesa lançada.</td></tr>}
                     </tbody>
                 </table>
+                )}
             </div>
         </div>
       </div>

@@ -10,15 +10,19 @@ export const PrintOrder: React.FC = () => {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    if (id) {
-        const o = db.orders.get(id);
-        if (o) {
-            setOrder(o);
-            const c = db.clients.get(o.clientId);
-            if(c) setClient(c);
+    const load = async () => {
+        if (id) {
+            const o = await db.orders.get(id);
+            if (o) {
+                setOrder(o);
+                const c = await db.clients.get(o.clientId);
+                if(c) setClient(c);
+            }
         }
-    }
-    setSettings(db.settings.get());
+        const s = await db.settings.get();
+        setSettings(s);
+    };
+    load();
   }, [id]);
 
   if (!order || !client || !settings) return <div>Carregando...</div>;
