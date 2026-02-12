@@ -12,7 +12,18 @@ export const db = {
       return data || [];
     },
     save: async (data: Client) => {
-      const { error } = await supabase.from('clients').upsert(data);
+      const { data: { user } } = await supabase.auth.getUser();
+      const payload = { 
+          id: data.id,
+          user_id: user?.id,
+          name: data.name,
+          whatsapp: data.whatsapp,
+          email: data.email,
+          doc: data.doc,
+          address: data.address,
+          notes: data.notes
+      };
+      const { error } = await supabase.from('clients').upsert(payload);
       if (error) throw error;
     },
     delete: async (id: string) => {
@@ -32,7 +43,19 @@ export const db = {
       return data || [];
     },
     save: async (data: Product) => {
-      const { error } = await supabase.from('products').upsert(data);
+      const { data: { user } } = await supabase.auth.getUser();
+      const payload = { 
+          id: data.id,
+          user_id: user?.id,
+          name: data.name,
+          description: data.description,
+          unit: data.unit,
+          price: data.price,
+          cost: data.cost,
+          active: data.active,
+          category: data.category
+      };
+      const { error } = await supabase.from('products').upsert(payload);
       if (error) throw error;
     },
     delete: async (id: string) => {
@@ -49,10 +72,47 @@ export const db = {
     list: async (): Promise<Order[]> => {
       const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
       if (error) throw error;
-      return data || [];
+      
+      // Mapeia de volta do banco (snake_case) para o app (camelCase)
+      return (data || []).map(row => ({
+          id: row.id,
+          user_id: row.user_id,
+          clientId: row.client_id,
+          date: row.date,
+          status: row.status,
+          items: row.items,
+          freightPrice: row.freight_price ?? 0,
+          freightChargedToCustomer: row.freight_charged_to_customer ?? true,
+          discount: row.discount ?? 0,
+          discountType: row.discount_type || 'money',
+          paymentMethod: row.payment_method || '',
+          notes: row.notes,
+          createdAt: row.created_at
+      }));
     },
     save: async (data: Order) => {
-      const { error } = await supabase.from('orders').upsert(data);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Mapeia do App (camelCase) para o Banco (snake_case) explicitamente
+      // IMPORTANTE: Não envie chaves extras que não existem no banco
+      const payload = {
+          id: data.id,
+          user_id: user?.id,
+          date: data.date,
+          status: data.status,
+          items: data.items, 
+          discount: data.discount,
+          notes: data.notes,
+          
+          client_id: data.clientId,
+          freight_price: data.freightPrice,
+          freight_charged_to_customer: data.freightChargedToCustomer,
+          discount_type: data.discountType,
+          payment_method: data.paymentMethod,
+          created_at: data.createdAt
+      };
+
+      const { error } = await supabase.from('orders').upsert(payload);
       if (error) throw error;
     },
     delete: async (id: string) => {
@@ -62,17 +122,36 @@ export const db = {
     get: async (id: string): Promise<Order | undefined> => {
       const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
       if (error) return undefined;
-      return data;
+      
+      return {
+          id: data.id,
+          clientId: data.client_id,
+          date: data.date,
+          status: data.status,
+          items: data.items,
+          freightPrice: data.freight_price ?? 0,
+          freightChargedToCustomer: data.freight_charged_to_customer ?? true,
+          discount: data.discount ?? 0,
+          discountType: data.discount_type || 'money',
+          paymentMethod: data.payment_method || '',
+          notes: data.notes,
+          createdAt: data.created_at
+      };
     },
     getNextOrderId: async (): Promise<string> => {
-        const settings = await db.settings.get();
-        const nextNum = settings.nextOrderNumber || 1;
-        // Gera ID sequencial com 5 dígitos: 00001, 00002...
-        const idStr = String(nextNum).padStart(5, '0');
-        
-        // Atualiza o próximo número nas configurações para o próximo pedido
-        await db.settings.save({ ...settings, nextOrderNumber: nextNum + 1 });
-        return idStr;
+        try {
+            const settings = await db.settings.get();
+            const nextNum = settings.nextOrderNumber || 1;
+            // Gera ID sequencial com 5 dígitos: 00001, 00002...
+            const idStr = String(nextNum).padStart(5, '0');
+            
+            // Incrementa e salva. Como corrigimos o db.settings.save, isso agora vai funcionar sem erro PGRST204
+            await db.settings.save({ ...settings, nextOrderNumber: nextNum + 1 });
+            return idStr;
+        } catch (error) {
+            console.error("Erro ao gerar ID:", error);
+            return generateId(); // Fallback se falhar
+        }
     }
   },
   expenses: {
@@ -82,7 +161,17 @@ export const db = {
       return data || [];
     },
     save: async (data: Expense) => {
-      const { error } = await supabase.from('expenses').upsert(data);
+      const { data: { user } } = await supabase.auth.getUser();
+      const payload = { 
+          id: data.id,
+          user_id: user?.id,
+          date: data.date,
+          category: data.category,
+          description: data.description,
+          amount: data.amount,
+          recurrent: data.recurrent
+      };
+      const { error } = await supabase.from('expenses').upsert(payload);
       if (error) throw error;
     },
     delete: async (id: string) => {
@@ -98,32 +187,30 @@ export const db = {
       const { data, error } = await supabase.from('settings').select('*').eq('user_id', user.id).single();
       
       if (error || !data) {
+          // Cria configurações iniciais se não existirem
           const initial = { 
-              ...DEFAULT_SETTINGS, 
               user_id: user.id,
+              company_name: DEFAULT_SETTINGS.companyName,
               payment_methods: ['Pix', 'Cartão de Crédito (Link)'],
-              next_order_number: DEFAULT_SETTINGS.nextOrderNumber,
-              company_name: DEFAULT_SETTINGS.companyName
+              next_order_number: 1,
+              // outros valores default se necessário
           };
           await supabase.from('settings').insert(initial);
-          return initial;
+          return DEFAULT_SETTINGS;
       }
       
-      // Mapeamento Robusto: Verifica camelCase (App) E snake_case (DB)
+      // Mapeamento DB (snake_case) -> App (camelCase)
       return {
-          companyName: data.companyName || data.company_name || DEFAULT_SETTINGS.companyName,
-          companyDoc: data.companyDoc || data.company_doc || DEFAULT_SETTINGS.companyDoc,
-          companyAddress: data.companyAddress || data.company_address || DEFAULT_SETTINGS.companyAddress,
-          companyContact: data.companyContact || data.company_contact || DEFAULT_SETTINGS.companyContact,
-          logoUrl: data.logoUrl || data.logo_url || DEFAULT_SETTINGS.logoUrl,
-          quoteValidityDays: data.quoteValidityDays || data.quote_validity_days || DEFAULT_SETTINGS.quoteValidityDays,
-          quoteTerms: data.quoteTerms || data.quote_terms || DEFAULT_SETTINGS.quoteTerms,
-          statusesConsideredSale: data.statusesConsideredSale || data.statuses_considered_sale || DEFAULT_SETTINGS.statusesConsideredSale,
-          nextOrderNumber: data.nextOrderNumber || data.next_order_number || DEFAULT_SETTINGS.nextOrderNumber,
-          // Garante que array de pagamentos exista verificando ambas as chaves ou usando o padrão
-          paymentMethods: (data.paymentMethods && data.paymentMethods.length > 0) 
-            ? data.paymentMethods 
-            : (data.payment_methods && data.payment_methods.length > 0)
+          companyName: data.company_name || DEFAULT_SETTINGS.companyName,
+          companyDoc: data.company_doc || DEFAULT_SETTINGS.companyDoc,
+          companyAddress: data.company_address || DEFAULT_SETTINGS.companyAddress,
+          companyContact: data.company_contact || DEFAULT_SETTINGS.companyContact,
+          logoUrl: data.logo_url || DEFAULT_SETTINGS.logoUrl,
+          quoteValidityDays: data.quote_validity_days || DEFAULT_SETTINGS.quoteValidityDays,
+          quoteTerms: data.quote_terms || DEFAULT_SETTINGS.quoteTerms,
+          statusesConsideredSale: data.statuses_considered_sale || DEFAULT_SETTINGS.statusesConsideredSale,
+          nextOrderNumber: data.next_order_number || DEFAULT_SETTINGS.nextOrderNumber,
+          paymentMethods: (data.payment_methods && data.payment_methods.length > 0) 
                 ? data.payment_methods
                 : ['Pix', 'Cartão de Crédito (Link)']
       };
@@ -132,38 +219,18 @@ export const db = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      // Envia payload com ambas as convenções de nome para garantir persistência no Supabase
+      // CORREÇÃO CRÍTICA: Enviar APENAS colunas que existem no banco (snake_case)
       const payload = {
           user_id: user.id,
-          
-          companyName: data.companyName,
           company_name: data.companyName,
-          
-          companyDoc: data.companyDoc,
           company_doc: data.companyDoc,
-          
-          companyAddress: data.companyAddress,
           company_address: data.companyAddress,
-          
-          companyContact: data.companyContact,
           company_contact: data.companyContact,
-          
-          logoUrl: data.logoUrl,
           logo_url: data.logoUrl,
-          
-          quoteValidityDays: data.quoteValidityDays,
           quote_validity_days: data.quoteValidityDays,
-          
-          quoteTerms: data.quoteTerms,
           quote_terms: data.quoteTerms,
-          
-          statusesConsideredSale: data.statusesConsideredSale,
           statuses_considered_sale: data.statusesConsideredSale,
-          
-          nextOrderNumber: data.nextOrderNumber,
           next_order_number: data.nextOrderNumber,
-          
-          paymentMethods: data.paymentMethods,
           payment_methods: data.paymentMethods
       };
 

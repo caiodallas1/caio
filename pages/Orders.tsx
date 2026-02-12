@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
-import { Plus, Search, Trash2, Edit2, Printer, Calendar } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Printer, Calendar, RefreshCw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: () => void, onSaved: () => void }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  // Inicializa JÁ com as opções desejadas para não depender de delay do banco
   const [paymentMethods, setPaymentMethods] = useState<string[]>(['Pix', 'Cartão de Crédito (Link)']);
   
   // Quick Client Creation State
@@ -45,7 +44,6 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
             setProducts(p);
             setClients(c);
             
-            // Se vier configurações do banco, atualiza. Se não, mantêm o padrão inicial.
             if (s.paymentMethods && s.paymentMethods.length > 0) {
                 setPaymentMethods(s.paymentMethods);
             }
@@ -54,11 +52,13 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
                 const found = await db.orders.get(orderId);
                 if (found) setOrder(found);
             } else {
+                // Ao criar novo pedido, busca o próximo ID sequencial (00001, 00002...)
                 const nextId = await db.orders.getNextOrderId();
                 setOrder(prev => ({ ...prev, id: nextId }));
             }
         } catch(e) {
             console.error(e);
+            alert("Erro ao carregar dados. Verifique sua conexão.");
         } finally {
             setLoading(false);
         }
@@ -108,7 +108,6 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
     
     const discountValue = order.discountType === 'money' ? order.discount : (subtotal * order.discount / 100);
     
-    // Revenue: (Items - Discount) + (Freight IF charged to customer)
     let totalRevenue = subtotal - discountValue;
     if (order.freightChargedToCustomer) totalRevenue += order.freightPrice;
 
@@ -126,42 +125,46 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    let finalClientId = order.clientId;
+    try {
+        let finalClientId = order.clientId;
 
-    if (isNewClientMode) {
-        if (!newClientName || !newClientPhone) {
-            return alert("Por favor, preencha Nome e WhatsApp do novo cliente.");
+        if (isNewClientMode) {
+            if (!newClientName || !newClientPhone) {
+                return alert("Por favor, preencha Nome e WhatsApp do novo cliente.");
+            }
+            const newClient: Client = {
+                id: generateId(),
+                name: newClientName,
+                whatsapp: newClientPhone,
+                email: '',
+                doc: '',
+                address: '',
+                notes: 'Criado via Pedido Rápido'
+            };
+            await db.clients.save(newClient);
+            finalClientId = newClient.id;
+        } else {
+            if (!order.clientId) return alert('Selecione um cliente');
         }
-        const newClient: Client = {
-            id: generateId(),
-            name: newClientName,
-            whatsapp: newClientPhone,
-            email: '',
-            doc: '',
-            address: '',
-            notes: 'Criado via Pedido Rápido'
+
+        const finalOrder = {
+            ...order,
+            clientId: finalClientId
         };
-        await db.clients.save(newClient);
-        finalClientId = newClient.id;
-    } else {
-        if (!order.clientId) return alert('Selecione um cliente');
+
+        await db.orders.save(finalOrder);
+        onSaved();
+        onClose();
+    } catch(error) {
+        console.error("Erro ao salvar pedido:", error);
+        alert("Erro ao salvar o pedido. Tente novamente.");
     }
-
-    const finalOrder = {
-        ...order,
-        clientId: finalClientId
-    };
-
-    await db.orders.save(finalOrder);
-    onSaved();
-    onClose();
   };
 
   const inputClass = "w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-colors";
   const labelClass = "block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300";
 
-  if (loading) return <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 z-50 flex items-center justify-center dark:text-white">Carregando...</div>;
+  if (loading) return <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 z-50 flex items-center justify-center dark:text-white"><RefreshCw className="animate-spin mr-2"/> Carregando Pedido...</div>;
 
   return (
     <div className="fixed inset-0 bg-gray-100 dark:bg-slate-950 z-50 overflow-y-auto transition-colors">
@@ -171,7 +174,10 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
           <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border-l-4 border-primary transition-colors">
              <div>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
-                <div className="text-sm font-mono text-primary font-bold mt-1">#{order.id}</div>
+                <div className="flex items-center gap-2 mt-1">
+                    <div className="text-sm font-mono bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded font-bold">#{order.id}</div>
+                    {!orderId && <span className="text-xs text-gray-400">(Automático)</span>}
+                </div>
              </div>
              <div className="flex gap-2">
                <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">Cancelar</button>
