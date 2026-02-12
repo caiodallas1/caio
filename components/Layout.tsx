@@ -48,7 +48,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
     }
   }, [darkMode]);
 
-  if (location.pathname.startsWith('/print/') || location.pathname === '/login' || location.pathname === '/register') {
+  // Adicionado location.pathname.startsWith('/track/') para remover o layout padrão na área do cliente
+  if (location.pathname.startsWith('/print/') || location.pathname.startsWith('/track/') || location.pathname === '/login' || location.pathname === '/register') {
     return <>{children}</>;
   }
 
