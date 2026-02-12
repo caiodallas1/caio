@@ -67,7 +67,9 @@ export const db = {
     getNextOrderId: async (): Promise<string> => {
         const settings = await db.settings.get();
         const nextNum = settings.nextOrderNumber || 1;
-        const idStr = String(nextNum).padStart(4, '0');
+        // Gera ID sequencial com 5 dígitos: 00001, 00002...
+        const idStr = String(nextNum).padStart(5, '0');
+        
         // Atualiza o próximo número nas configurações para o próximo pedido
         await db.settings.save({ ...settings, nextOrderNumber: nextNum + 1 });
         return idStr;
@@ -96,18 +98,76 @@ export const db = {
       const { data, error } = await supabase.from('settings').select('*').eq('user_id', user.id).single();
       
       if (error || !data) {
-          // Se não houver configurações, cria uma linha padrão para o usuário
-          const initial = { ...DEFAULT_SETTINGS, user_id: user.id };
+          const initial = { 
+              ...DEFAULT_SETTINGS, 
+              user_id: user.id,
+              payment_methods: ['Pix', 'Cartão de Crédito (Link)'],
+              next_order_number: DEFAULT_SETTINGS.nextOrderNumber,
+              company_name: DEFAULT_SETTINGS.companyName
+          };
           await supabase.from('settings').insert(initial);
           return initial;
       }
-      return data;
+      
+      // Mapeamento Robusto: Verifica camelCase (App) E snake_case (DB)
+      return {
+          companyName: data.companyName || data.company_name || DEFAULT_SETTINGS.companyName,
+          companyDoc: data.companyDoc || data.company_doc || DEFAULT_SETTINGS.companyDoc,
+          companyAddress: data.companyAddress || data.company_address || DEFAULT_SETTINGS.companyAddress,
+          companyContact: data.companyContact || data.company_contact || DEFAULT_SETTINGS.companyContact,
+          logoUrl: data.logoUrl || data.logo_url || DEFAULT_SETTINGS.logoUrl,
+          quoteValidityDays: data.quoteValidityDays || data.quote_validity_days || DEFAULT_SETTINGS.quoteValidityDays,
+          quoteTerms: data.quoteTerms || data.quote_terms || DEFAULT_SETTINGS.quoteTerms,
+          statusesConsideredSale: data.statusesConsideredSale || data.statuses_considered_sale || DEFAULT_SETTINGS.statusesConsideredSale,
+          nextOrderNumber: data.nextOrderNumber || data.next_order_number || DEFAULT_SETTINGS.nextOrderNumber,
+          // Garante que array de pagamentos exista verificando ambas as chaves ou usando o padrão
+          paymentMethods: (data.paymentMethods && data.paymentMethods.length > 0) 
+            ? data.paymentMethods 
+            : (data.payment_methods && data.payment_methods.length > 0)
+                ? data.payment_methods
+                : ['Pix', 'Cartão de Crédito (Link)']
+      };
     },
     save: async (data: Settings) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { error } = await supabase.from('settings').upsert({ ...data, user_id: user.id });
+      // Envia payload com ambas as convenções de nome para garantir persistência no Supabase
+      const payload = {
+          user_id: user.id,
+          
+          companyName: data.companyName,
+          company_name: data.companyName,
+          
+          companyDoc: data.companyDoc,
+          company_doc: data.companyDoc,
+          
+          companyAddress: data.companyAddress,
+          company_address: data.companyAddress,
+          
+          companyContact: data.companyContact,
+          company_contact: data.companyContact,
+          
+          logoUrl: data.logoUrl,
+          logo_url: data.logoUrl,
+          
+          quoteValidityDays: data.quoteValidityDays,
+          quote_validity_days: data.quoteValidityDays,
+          
+          quoteTerms: data.quoteTerms,
+          quote_terms: data.quoteTerms,
+          
+          statusesConsideredSale: data.statusesConsideredSale,
+          statuses_considered_sale: data.statusesConsideredSale,
+          
+          nextOrderNumber: data.nextOrderNumber,
+          next_order_number: data.nextOrderNumber,
+          
+          paymentMethods: data.paymentMethods,
+          payment_methods: data.paymentMethods
+      };
+
+      const { error } = await supabase.from('settings').upsert(payload);
       if (error) throw error;
     }
   }

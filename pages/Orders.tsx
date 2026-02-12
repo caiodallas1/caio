@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
@@ -7,7 +8,8 @@ import { Link, useNavigate } from 'react-router-dom';
 const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: () => void, onSaved: () => void }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  // Inicializa JÁ com as opções desejadas para não depender de delay do banco
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(['Pix', 'Cartão de Crédito (Link)']);
   
   // Quick Client Creation State
   const [isNewClientMode, setIsNewClientMode] = useState(false);
@@ -42,7 +44,11 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
             ]);
             setProducts(p);
             setClients(c);
-            setPaymentMethods(s.paymentMethods);
+            
+            // Se vier configurações do banco, atualiza. Se não, mantêm o padrão inicial.
+            if (s.paymentMethods && s.paymentMethods.length > 0) {
+                setPaymentMethods(s.paymentMethods);
+            }
 
             if (orderId) {
                 const found = await db.orders.get(orderId);
@@ -152,37 +158,40 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
     onClose();
   };
 
-  if (loading) return <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center">Carregando...</div>;
+  const inputClass = "w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-colors";
+  const labelClass = "block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300";
+
+  if (loading) return <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 z-50 flex items-center justify-center dark:text-white">Carregando...</div>;
 
   return (
-    <div className="fixed inset-0 bg-gray-100 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-100 dark:bg-slate-950 z-50 overflow-y-auto transition-colors">
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <form onSubmit={handleSave} className="space-y-6">
           {/* Header */}
-          <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border-l-4 border-primary">
+          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border-l-4 border-primary transition-colors">
              <div>
-                <h2 className="text-2xl font-bold text-slate-800">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
                 <div className="text-sm font-mono text-primary font-bold mt-1">#{order.id}</div>
              </div>
              <div className="flex gap-2">
-               <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
+               <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">Cancelar</button>
                {orderId && (
-                  <Link to={`/print/order/${order.id}`} target="_blank" className="px-4 py-2 bg-slate-800 text-white rounded-lg flex items-center gap-2">
+                  <Link to={`/print/order/${order.id}`} target="_blank" className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg flex items-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-600">
                     <Printer size={16} /> PDF
                   </Link>
                )}
-               <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-yellow-700 font-medium shadow-md">Salvar Pedido</button>
+               <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-amber-600 font-medium shadow-md">Salvar Pedido</button>
              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Main Info */}
             <div className="md:col-span-2 space-y-6">
-               <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
+               <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800 transition-colors">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 md:col-span-1">
                         <div className="flex justify-between items-center mb-1">
-                            <label className="block text-sm font-medium">Cliente *</label>
+                            <label className={labelClass}>Cliente *</label>
                             <button 
                                 type="button" 
                                 onClick={() => setIsNewClientMode(!isNewClientMode)} 
@@ -193,144 +202,144 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
                         </div>
                         
                         {isNewClientMode ? (
-                            <div className="space-y-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <div className="space-y-2 p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30">
                                 <input 
                                     required={isNewClientMode}
                                     placeholder="Nome do Cliente" 
-                                    className="w-full border rounded p-2 text-sm" 
+                                    className={inputClass}
                                     value={newClientName}
                                     onChange={e => setNewClientName(e.target.value)}
                                 />
                                 <input 
                                     required={isNewClientMode}
                                     placeholder="WhatsApp" 
-                                    className="w-full border rounded p-2 text-sm" 
+                                    className={inputClass} 
                                     value={newClientPhone}
                                     onChange={e => setNewClientPhone(e.target.value)}
                                 />
                             </div>
                         ) : (
-                            <select required className="w-full border rounded-lg p-2" value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
+                            <select required className={inputClass} value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
                                 <option value="">Selecione...</option>
                                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         )}
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Data</label>
-                        <input type="date" required className="w-full border rounded-lg p-2" value={order.date} onChange={e => setOrder({...order, date: e.target.value})} />
+                        <label className={labelClass}>Data</label>
+                        <input type="date" required className={inputClass} value={order.date} onChange={e => setOrder({...order, date: e.target.value})} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <select className="w-full border rounded-lg p-2" value={order.status} onChange={e => setOrder({...order, status: e.target.value as OrderStatus})}>
+                    <label className={labelClass}>Status</label>
+                    <select className={inputClass} value={order.status} onChange={e => setOrder({...order, status: e.target.value as OrderStatus})}>
                         {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                </div>
 
-               <div className="bg-white p-6 rounded-xl shadow-sm">
+               <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg">Itens do Pedido</h3>
-                    <button type="button" onClick={addItem} className="text-primary text-sm font-bold flex items-center gap-1 hover:bg-yellow-50 px-2 py-1 rounded">+ Adicionar Item</button>
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">Itens do Pedido</h3>
+                    <button type="button" onClick={addItem} className="text-primary text-sm font-bold flex items-center gap-1 hover:bg-yellow-50 dark:hover:bg-slate-800 px-2 py-1 rounded transition-colors">+ Adicionar Item</button>
                   </div>
                   
                   <div className="space-y-4">
                     {order.items.map((item, idx) => (
-                        <div key={item.id} className="grid grid-cols-12 gap-2 items-start border-b border-gray-100 pb-4">
+                        <div key={item.id} className="grid grid-cols-12 gap-2 items-start border-b border-gray-100 dark:border-slate-800 pb-4">
                             <div className="col-span-12 md:col-span-4">
-                                <label className="text-xs text-gray-500 block md:hidden">Produto</label>
-                                <select className="w-full border rounded p-1.5 text-sm" value={item.productId} onChange={e => updateItem(idx, 'productId', e.target.value)}>
+                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Produto</label>
+                                <select className={`${inputClass} mb-2`} value={item.productId} onChange={e => updateItem(idx, 'productId', e.target.value)}>
                                     <option value="">Avulso / Selecionar</option>
                                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                                <input placeholder="Descrição" className="w-full border rounded p-1.5 text-sm mt-1" value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+                                <input placeholder="Descrição" className={inputClass} value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
                             </div>
                             <div className="col-span-3 md:col-span-2">
-                                <label className="text-xs text-gray-500">Qtd</label>
-                                <input type="number" min="0.01" step="0.01" className="w-full border rounded p-1.5 text-sm" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} />
+                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Qtd</label>
+                                <input type="number" min="0.01" step="0.01" className={inputClass} value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} />
                             </div>
                             <div className="col-span-4 md:col-span-2">
-                                <label className="text-xs text-gray-500">Preço Un (Venda)</label>
-                                <input type="number" step="0.01" className="w-full border rounded p-1.5 text-sm" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} />
+                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Preço Un</label>
+                                <input type="number" step="0.01" className={inputClass} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} />
                             </div>
                             <div className="col-span-4 md:col-span-2">
-                                <label className="text-xs text-gray-500">Custo Un (Interno)</label>
-                                <input type="number" step="0.01" className="w-full border rounded p-1.5 text-sm bg-slate-50 text-slate-500" value={item.unitCost} onChange={e => updateItem(idx, 'unitCost', Number(e.target.value))} />
+                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Custo Un</label>
+                                <input type="number" step="0.01" className={`${inputClass} bg-slate-50 dark:bg-slate-800/50 text-slate-500`} value={item.unitCost} onChange={e => updateItem(idx, 'unitCost', Number(e.target.value))} />
                             </div>
-                            <div className="col-span-1 flex justify-center pt-6">
-                                <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                            <div className="col-span-1 flex justify-center pt-2 md:pt-2">
+                                <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"><Trash2 size={16} /></button>
                             </div>
-                            <div className="col-span-12 text-right font-medium text-slate-700 text-sm">
+                            <div className="col-span-12 text-right font-medium text-slate-700 dark:text-slate-300 text-sm mt-1">
                                 Subtotal: R$ {(item.quantity * item.unitPrice).toFixed(2)}
                             </div>
                         </div>
                     ))}
-                    {order.items.length === 0 && <p className="text-center text-gray-400 py-4">Nenhum item adicionado</p>}
+                    {order.items.length === 0 && <p className="text-center text-gray-400 dark:text-slate-500 py-4">Nenhum item adicionado</p>}
                   </div>
                </div>
             </div>
 
             {/* Side Calculations */}
             <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
-                    <h3 className="font-bold border-b pb-2">Valores e Frete</h3>
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800 transition-colors">
+                    <h3 className="font-bold border-b border-gray-100 dark:border-slate-800 pb-2 text-slate-800 dark:text-white">Valores e Frete</h3>
                     
                     <div>
-                        <label className="block text-sm font-medium mb-1">Desconto</label>
+                        <label className={labelClass}>Desconto</label>
                         <div className="flex gap-2">
-                            <input type="number" className="w-full border rounded p-2" value={order.discount} onChange={e => setOrder({...order, discount: Number(e.target.value)})} />
-                            <select className="border rounded bg-gray-50" value={order.discountType} onChange={e => setOrder({...order, discountType: e.target.value as any})}>
+                            <input type="number" className={inputClass} value={order.discount} onChange={e => setOrder({...order, discount: Number(e.target.value)})} />
+                            <select className={`${inputClass} w-24`} value={order.discountType} onChange={e => setOrder({...order, discountType: e.target.value as any})}>
                                 <option value="money">R$</option>
                                 <option value="percentage">%</option>
                             </select>
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                        <label className="block text-sm font-medium text-blue-800 mb-1">Frete (Custo Real)</label>
-                        <input type="number" className="w-full border border-blue-200 rounded p-2" value={order.freightPrice} onChange={e => setOrder({...order, freightPrice: Number(e.target.value)})} />
+                    <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                        <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Frete (Custo Real)</label>
+                        <input type="number" className="w-full border border-blue-200 dark:border-blue-800 rounded p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-white" value={order.freightPrice} onChange={e => setOrder({...order, freightPrice: Number(e.target.value)})} />
                         
                         <div className="flex items-center gap-2 mt-3">
-                            <input type="checkbox" id="chargeFreight" className="w-4 h-4 text-primary" checked={order.freightChargedToCustomer} onChange={e => setOrder({...order, freightChargedToCustomer: e.target.checked})} />
-                            <label htmlFor="chargeFreight" className="text-sm text-blue-800">Cobrar do cliente?</label>
+                            <input type="checkbox" id="chargeFreight" className="w-4 h-4 text-primary rounded" checked={order.freightChargedToCustomer} onChange={e => setOrder({...order, freightChargedToCustomer: e.target.checked})} />
+                            <label htmlFor="chargeFreight" className="text-sm text-blue-800 dark:text-blue-300">Cobrar do cliente?</label>
                         </div>
-                        <p className="text-xs text-blue-600 mt-1">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80">
                             {order.freightChargedToCustomer 
                                 ? "Adicionado à Venda. (Não conta como custo)." 
                                 : "NÃO entra na Venda. (Conta como custo/despesa)."}
                         </p>
                     </div>
 
-                    <div className="pt-4 border-t space-y-2">
-                        <div className="flex justify-between text-sm"><span>Subtotal Itens:</span> <span>R$ {totals.subtotal.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-sm text-red-500"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div>
+                    <div className="pt-4 border-t border-gray-100 dark:border-slate-800 space-y-2">
+                        <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400"><span>Subtotal Itens:</span> <span>R$ {totals.subtotal.toFixed(2)}</span></div>
+                        <div className="flex justify-between text-sm text-red-500 dark:text-red-400"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div>
                         {order.freightChargedToCustomer && (
-                             <div className="flex justify-between text-sm text-blue-600"><span>Frete (Receita):</span> <span>+ R$ {order.freightPrice.toFixed(2)}</span></div>
+                             <div className="flex justify-between text-sm text-blue-600 dark:text-blue-400"><span>Frete (Receita):</span> <span>+ R$ {order.freightPrice.toFixed(2)}</span></div>
                         )}
-                        <div className="flex justify-between text-xl font-bold text-slate-800 pt-2 border-t">
+                        <div className="flex justify-between text-xl font-bold text-slate-800 dark:text-white pt-2 border-t border-gray-100 dark:border-slate-800">
                             <span>Total Venda:</span> 
                             <span>R$ {totals.totalRevenue.toFixed(2)}</span>
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 p-3 rounded text-xs space-y-1 text-gray-500">
+                    <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded text-xs space-y-1 text-gray-500 dark:text-gray-400">
                          <div className="flex justify-between"><span>Custos Itens:</span> <span>R$ {order.items.reduce((a, b) => a + (b.unitCost * b.quantity), 0).toFixed(2)}</span></div>
                          <div className="flex justify-between">
                              <span>Custo Frete:</span> 
                              <span>R$ {(!order.freightChargedToCustomer ? order.freightPrice : 0).toFixed(2)}</span>
                         </div>
-                         <div className={`flex justify-between font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                         <div className={`flex justify-between font-bold ${totals.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             <span>Lucro Estimado:</span> 
                             <span>R$ {totals.profit.toFixed(2)}</span>
                          </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <label className="block text-sm font-medium mb-1">Forma de Pagamento</label>
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
+                    <label className={labelClass}>Forma de Pagamento</label>
                     <select 
-                        className="w-full border rounded p-2 mb-3" 
+                        className={`${inputClass} mb-3`}
                         value={order.paymentMethod} 
                         onChange={e => setOrder({...order, paymentMethod: e.target.value})}
                     >
@@ -341,8 +350,8 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
                     </select>
                     {paymentMethods.length === 0 && <p className="text-xs text-red-500 mb-2">Configure os métodos de pagamento em Configurações.</p>}
                     
-                    <label className="block text-sm font-medium mb-1">Observações Internas</label>
-                    <textarea className="w-full border rounded p-2" rows={3} value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} />
+                    <label className={labelClass}>Observações Internas</label>
+                    <textarea className={inputClass} rows={3} value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} />
                 </div>
             </div>
           </div>
@@ -390,11 +399,11 @@ export const Orders: React.FC = () => {
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-        case OrderStatus.APPROVED: return 'bg-blue-100 text-blue-800';
-        case OrderStatus.DELIVERED: return 'bg-green-100 text-green-800';
-        case OrderStatus.CANCELED: return 'bg-red-100 text-red-800';
-        case OrderStatus.QUOTE: return 'bg-yellow-100 text-yellow-800';
-        default: return 'bg-gray-100 text-gray-800';
+        case OrderStatus.APPROVED: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+        case OrderStatus.DELIVERED: return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+        case OrderStatus.CANCELED: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+        case OrderStatus.QUOTE: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        default: return 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300';
     }
   };
 
@@ -411,7 +420,6 @@ export const Orders: React.FC = () => {
           return oDate.getTime() === today.getTime();
       }
       if (dateFilterType === 'WEEK') {
-          // simple week check (last 7 days) or current week
           const oneWeekAgo = new Date(today);
           oneWeekAgo.setDate(today.getDate() - 7);
           return oDate >= oneWeekAgo && oDate <= today;
@@ -430,7 +438,7 @@ export const Orders: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-800">Pedidos</h2>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Pedidos</h2>
         <button 
           onClick={() => setIsCreating(true)}
           className="bg-primary hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-md"
@@ -440,38 +448,40 @@ export const Orders: React.FC = () => {
       </div>
 
       {/* Date Filters Toolbar */}
-      <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-wrap gap-2 items-center">
-        <div className="flex items-center gap-1 text-slate-500 mr-2">
+      <div className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-slate-800 flex flex-wrap gap-2 items-center transition-colors">
+        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 mr-2">
             <Calendar size={18} />
             <span className="text-sm font-semibold">Período:</span>
         </div>
-        <button onClick={() => setDateFilterType('ALL')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}`}>Tudo</button>
-        <button onClick={() => setDateFilterType('TODAY')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'TODAY' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Hoje</button>
-        <button onClick={() => setDateFilterType('WEEK')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'WEEK' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Semana</button>
-        <button onClick={() => setDateFilterType('MONTH')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'MONTH' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>Mês</button>
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-            <span className="text-xs text-slate-500">Data:</span>
+        <div className="flex gap-2">
+            <button onClick={() => setDateFilterType('ALL')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Tudo</button>
+            <button onClick={() => setDateFilterType('TODAY')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'TODAY' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Hoje</button>
+            <button onClick={() => setDateFilterType('WEEK')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'WEEK' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Semana</button>
+            <button onClick={() => setDateFilterType('MONTH')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'MONTH' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Mês</button>
+        </div>
+        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Data:</span>
             <input 
                 type="date" 
                 value={customDate} 
                 onChange={e => { setCustomDate(e.target.value); setDateFilterType('CUSTOM'); }}
-                className={`border rounded px-2 py-1 text-sm ${dateFilterType === 'CUSTOM' ? 'border-primary ring-1 ring-primary' : 'border-gray-200'}`} 
+                className={`border rounded px-2 py-1 text-sm bg-white dark:bg-slate-800 dark:text-white ${dateFilterType === 'CUSTOM' ? 'border-primary ring-1 ring-primary' : 'border-gray-200 dark:border-slate-700'}`} 
             />
         </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
-        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border'}`}>Status: Todos</button>
+        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>Status: Todos</button>
         {Object.values(OrderStatus).map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === s ? 'bg-slate-800 text-white' : 'bg-white border'}`}>{s}</button>
+            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === s ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>{s}</button>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
-          {loading ? <div className="p-8 text-center text-gray-500">Carregando...</div> : (
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
+          {loading ? <div className="p-8 text-center text-gray-500 dark:text-slate-400">Carregando...</div> : (
+          <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold border-b dark:border-slate-700">
               <tr>
                 <th className="px-6 py-4">ID/Data</th>
                 <th className="px-6 py-4">Cliente</th>
@@ -480,7 +490,7 @@ export const Orders: React.FC = () => {
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {filtered.map(order => {
                 // Quick Calc for display
                 let sub = order.items.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
@@ -488,31 +498,31 @@ export const Orders: React.FC = () => {
                 let total = sub - disc + (order.freightChargedToCustomer ? order.freightPrice : 0);
 
                 return (
-                  <tr key={order.id} className="hover:bg-slate-50">
+                  <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
                         <div className="font-mono text-sm font-bold text-primary">#{order.id}</div>
-                        <div className="text-xs text-slate-500">{new Date(order.date).toLocaleDateString('pt-BR')}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{new Date(order.date).toLocaleDateString('pt-BR')}</div>
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-800">{getClientName(order.clientId)}</td>
+                    <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{getClientName(order.clientId)}</td>
                     <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(order.status)}`}>{order.status}</span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-slate-700">R$ {total.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">R$ {total.toFixed(2)}</td>
                     <td className="px-6 py-4 text-right flex justify-end gap-3">
-                      <Link to={`/print/order/${order.id}`} target="_blank" className="text-slate-500 hover:text-slate-800" title="Imprimir/PDF">
+                      <Link to={`/print/order/${order.id}`} target="_blank" className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white" title="Imprimir/PDF">
                         <Printer size={18} />
                       </Link>
-                      <button onClick={() => setEditingId(order.id)} className="text-blue-600 hover:text-blue-800">
+                      <button onClick={() => setEditingId(order.id)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                         <Edit2 size={18} />
                       </button>
-                      <button onClick={() => handleDelete(order.id)} className="text-red-600 hover:text-red-800">
+                      <button onClick={() => handleDelete(order.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
                         <Trash2 size={18} />
                       </button>
                     </td>
                   </tr>
                 );
               })}
-              {filtered.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Nenhum pedido encontrado.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400 dark:text-slate-500">Nenhum pedido encontrado.</td></tr>}
             </tbody>
           </table>
           )}

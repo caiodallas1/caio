@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -98,5 +99,5 @@ export const DEFAULT_SETTINGS: Settings = {
   quoteTerms: 'Pagamento: 50% na aprovação e 50% na entrega.\nPrazo de entrega a combinar.',
   statusesConsideredSale: [OrderStatus.DELIVERED, OrderStatus.APPROVED, OrderStatus.READY, OrderStatus.PRODUCTION],
   nextOrderNumber: 1,
-  paymentMethods: ['Pix', 'Cartão de Crédito', 'Dinheiro', 'Boleto']
+  paymentMethods: ['Pix', 'Cartão de Crédito (Link)']
 };
