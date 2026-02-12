@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, ShoppingCart, DollarSign, Settings as SettingsIcon, LogOut, User as UserIcon, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Package, ShoppingCart, DollarSign, Settings as SettingsIcon, LogOut, User as UserIcon, Sun, Moon, Menu } from 'lucide-react';
 import { auth } from '../services/auth';
 import { User } from '../types';
 
@@ -22,6 +22,13 @@ const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, lab
     <Icon size={20} />
     <span className="font-medium">{label}</span>
   </Link>
+);
+
+const MobileTabItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
+    <Link to={to} className={`flex flex-col items-center justify-center w-full py-2 transition-colors ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+        <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+        <span className="text-[10px] font-medium mt-1">{label}</span>
+    </Link>
 );
 
 export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
@@ -47,7 +54,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300">
-      {/* Sidebar */}
+      {/* Sidebar (Desktop Only) */}
       <aside className="w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 hidden md:flex flex-col transition-colors duration-300">
         <div className="p-6 border-b border-gray-100 dark:border-slate-800">
           <div className="flex justify-between items-center mb-6">
@@ -97,23 +104,36 @@ export const Layout: React.FC<LayoutProps> = ({ children, user }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 p-4 flex justify-between items-center transition-colors">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+        {/* Mobile Header (Simplified) */}
+        <header className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 p-4 flex justify-between items-center transition-colors shadow-sm z-10">
             <h1 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-white text-xs">G</div>
                 Gesto Pro
             </h1>
-            <nav className="flex gap-4 items-center">
-               <button onClick={() => setDarkMode(!darkMode)} className="text-slate-600 dark:text-slate-400">
+            <div className="flex gap-3 items-center">
+               <button onClick={() => setDarkMode(!darkMode)} className="text-slate-600 dark:text-slate-400 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
                 {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                </button>
-               <Link to="/" className="text-slate-600 dark:text-slate-400"><LayoutDashboard size={20}/></Link>
-               <button onClick={() => auth.logout()} className="text-red-500"><LogOut size={20}/></button>
-            </nav>
+               <button onClick={() => auth.logout()} className="text-red-500 p-1"><LogOut size={20}/></button>
+            </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
           {children}
+        </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex justify-around items-center px-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+            <MobileTabItem to="/" icon={LayoutDashboard} label="Início" active={location.pathname === '/'} />
+            <MobileTabItem to="/orders" icon={ShoppingCart} label="Pedidos" active={location.pathname.startsWith('/orders')} />
+            <div className="relative -top-5">
+                 <Link to="/orders" className="flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-lg border-4 border-gray-50 dark:border-slate-950">
+                    <span className="text-2xl font-bold mb-1">+</span>
+                 </Link>
+            </div>
+            <MobileTabItem to="/expenses" icon={DollarSign} label="Despesas" active={location.pathname.startsWith('/expenses')} />
+            <MobileTabItem to="/settings" icon={Menu} label="Menu" active={location.pathname.startsWith('/settings') || location.pathname.startsWith('/clients') || location.pathname.startsWith('/products')} />
         </div>
       </main>
     </div>

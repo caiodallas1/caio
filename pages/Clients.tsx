@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Client } from '../types';
-import { Plus, Edit, Trash2, Search, Phone, Mail } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Phone, Mail, MapPin } from 'lucide-react';
 
 export const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -48,11 +48,11 @@ export const Clients: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Clientes</h2>
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white self-start md:self-auto">Clientes</h2>
         <button 
           onClick={() => { setCurrentClient({}); setIsModalOpen(true); }}
-          className="bg-primary hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-md transition-colors"
+          className="w-full md:w-auto bg-primary hover:bg-amber-600 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors"
         >
           <Plus size={18} /> Novo Cliente
         </button>
@@ -67,12 +67,38 @@ export const Clients: React.FC = () => {
               placeholder="Buscar cliente..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-2 focus:ring-primary focus:outline-none dark:text-white transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary focus:outline-none dark:text-white transition-all"
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW */}
+        <div className="md:hidden">
+            {loading && <div className="p-8 text-center text-gray-500">Carregando...</div>}
+            {filtered.map(client => (
+                <div key={client.id} className="p-5 border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                         <h3 className="font-bold text-slate-800 dark:text-white text-lg">{client.name}</h3>
+                         <div className="flex gap-2">
+                            <button onClick={() => { setCurrentClient(client); setIsModalOpen(true); }} className="p-2 text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <Edit size={16}/>
+                            </button>
+                             <button onClick={() => handleDelete(client.id)} className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                <Trash2 size={16}/>
+                            </button>
+                         </div>
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-2"><Phone size={14} className="text-primary"/> {client.whatsapp}</div>
+                        {client.email && <div className="flex items-center gap-2"><Mail size={14}/> {client.email}</div>}
+                        {client.address && <div className="flex items-center gap-2"><MapPin size={14}/> {client.address}</div>}
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block overflow-x-auto">
           {loading ? (
               <div className="p-8 text-center text-gray-500 dark:text-slate-400">Carregando...</div>
           ) : (
@@ -124,7 +150,7 @@ export const Clients: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border dark:border-slate-800 animate-in fade-in zoom-in duration-200">
             <form onSubmit={handleSave}>
               <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
@@ -134,25 +160,25 @@ export const Clients: React.FC = () => {
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo *</label>
-                  <input required className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.name || ''} onChange={e => setCurrentClient({...currentClient, name: e.target.value})} />
+                  <input required className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.name || ''} onChange={e => setCurrentClient({...currentClient, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">WhatsApp *</label>
-                    <input required className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.whatsapp || ''} onChange={e => setCurrentClient({...currentClient, whatsapp: e.target.value})} />
+                    <input required className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.whatsapp || ''} onChange={e => setCurrentClient({...currentClient, whatsapp: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">E-mail</label>
-                    <input type="email" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.email || ''} onChange={e => setCurrentClient({...currentClient, email: e.target.value})} />
+                    <input type="email" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.email || ''} onChange={e => setCurrentClient({...currentClient, email: e.target.value})} />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CPF / CNPJ</label>
-                  <input className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.doc || ''} onChange={e => setCurrentClient({...currentClient, doc: e.target.value})} />
+                  <input className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.doc || ''} onChange={e => setCurrentClient({...currentClient, doc: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Endereço</label>
-                  <textarea rows={2} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.address || ''} onChange={e => setCurrentClient({...currentClient, address: e.target.value})} />
+                  <textarea rows={2} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg p-3 dark:text-white focus:ring-2 focus:ring-primary outline-none" value={currentClient.address || ''} onChange={e => setCurrentClient({...currentClient, address: e.target.value})} />
                 </div>
               </div>
               <div className="p-6 border-t border-gray-100 dark:border-slate-800 flex justify-end gap-3">

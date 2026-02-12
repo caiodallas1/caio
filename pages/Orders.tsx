@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
-import { Plus, Search, Trash2, Edit2, Printer, Calendar, RefreshCw } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Printer, Calendar, RefreshCw, ChevronRight, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: () => void, onSaved: () => void }) => {
@@ -161,17 +161,24 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
     }
   };
 
-  const inputClass = "w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-colors";
+  const inputClass = "w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base focus:ring-2 focus:ring-primary focus:outline-none transition-colors";
   const labelClass = "block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300";
 
-  if (loading) return <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 z-50 flex items-center justify-center dark:text-white"><RefreshCw className="animate-spin mr-2"/> Carregando Pedido...</div>;
+  if (loading) return <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 z-[60] flex items-center justify-center dark:text-white"><RefreshCw className="animate-spin mr-2"/> Carregando Pedido...</div>;
 
   return (
-    <div className="fixed inset-0 bg-gray-100 dark:bg-slate-950 z-50 overflow-y-auto transition-colors">
-      <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border-l-4 border-primary transition-colors">
+    <div className="fixed inset-0 bg-gray-100 dark:bg-slate-950 z-[55] overflow-y-auto transition-colors">
+      <div className="max-w-5xl mx-auto p-0 md:p-8">
+        <form onSubmit={handleSave} className="flex flex-col min-h-screen md:min-h-0">
+          {/* Header Mobile Sticky */}
+          <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 p-4 shadow-sm border-b border-gray-100 dark:border-slate-800 flex justify-between items-center md:hidden">
+             <button type="button" onClick={onClose} className="text-slate-500">Cancelar</button>
+             <h2 className="font-bold text-slate-800 dark:text-white">Editar Pedido</h2>
+             <button type="submit" className="font-bold text-primary">Salvar</button>
+          </div>
+
+          {/* Header Desktop */}
+          <div className="hidden md:flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-t-xl shadow-sm border-l-4 border-primary transition-colors">
              <div>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{orderId ? 'Editar Pedido' : 'Novo Pedido'}</h2>
                 <div className="flex items-center gap-2 mt-1">
@@ -190,109 +197,121 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
              </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex-1 p-4 space-y-6 overflow-y-auto bg-gray-50 dark:bg-slate-950">
             {/* Main Info */}
-            <div className="md:col-span-2 space-y-6">
-               <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800 transition-colors">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 md:col-span-1">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className={labelClass}>Cliente *</label>
-                            <button 
-                                type="button" 
-                                onClick={() => setIsNewClientMode(!isNewClientMode)} 
-                                className="text-xs text-primary font-bold flex items-center gap-1 hover:underline"
-                            >
-                                {isNewClientMode ? 'Selecionar Existente' : '+ Novo Cliente'}
-                            </button>
-                        </div>
-                        
-                        {isNewClientMode ? (
-                            <div className="space-y-2 p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30">
-                                <input 
-                                    required={isNewClientMode}
-                                    placeholder="Nome do Cliente" 
-                                    className={inputClass}
-                                    value={newClientName}
-                                    onChange={e => setNewClientName(e.target.value)}
-                                />
-                                <input 
-                                    required={isNewClientMode}
-                                    placeholder="WhatsApp" 
-                                    className={inputClass} 
-                                    value={newClientPhone}
-                                    onChange={e => setNewClientPhone(e.target.value)}
-                                />
-                            </div>
-                        ) : (
-                            <select required className={inputClass} value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
-                                <option value="">Selecione...</option>
-                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        )}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <label className={labelClass}>Cliente *</label>
+                        <button 
+                            type="button" 
+                            onClick={() => setIsNewClientMode(!isNewClientMode)} 
+                            className="text-xs text-primary font-bold flex items-center gap-1 hover:underline p-1"
+                        >
+                            {isNewClientMode ? 'Selecionar Existente' : '+ Novo Cliente'}
+                        </button>
                     </div>
+                    
+                    {isNewClientMode ? (
+                        <div className="space-y-3 p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30">
+                            <input 
+                                required={isNewClientMode}
+                                placeholder="Nome do Cliente" 
+                                className={inputClass}
+                                value={newClientName}
+                                onChange={e => setNewClientName(e.target.value)}
+                            />
+                            <input 
+                                required={isNewClientMode}
+                                placeholder="WhatsApp" 
+                                className={inputClass} 
+                                value={newClientPhone}
+                                onChange={e => setNewClientPhone(e.target.value)}
+                            />
+                        </div>
+                    ) : (
+                        <select required className={inputClass} value={order.clientId} onChange={e => setOrder({...order, clientId: e.target.value})}>
+                            <option value="">Selecione...</option>
+                            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className={labelClass}>Data</label>
                         <input type="date" required className={inputClass} value={order.date} onChange={e => setOrder({...order, date: e.target.value})} />
                     </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Status</label>
-                    <select className={inputClass} value={order.status} onChange={e => setOrder({...order, status: e.target.value as OrderStatus})}>
-                        {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-               </div>
+                    <div>
+                        <label className={labelClass}>Status</label>
+                        <select className={inputClass} value={order.status} onChange={e => setOrder({...order, status: e.target.value as OrderStatus})}>
+                            {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                </div>
+                </div>
+            </div>
 
-               <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">Itens do Pedido</h3>
-                    <button type="button" onClick={addItem} className="text-primary text-sm font-bold flex items-center gap-1 hover:bg-yellow-50 dark:hover:bg-slate-800 px-2 py-1 rounded transition-colors">+ Adicionar Item</button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {order.items.map((item, idx) => (
-                        <div key={item.id} className="grid grid-cols-12 gap-2 items-start border-b border-gray-100 dark:border-slate-800 pb-4">
-                            <div className="col-span-12 md:col-span-4">
-                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Produto</label>
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
+                <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white">Itens do Pedido</h3>
+                <button type="button" onClick={addItem} className="bg-primary text-white text-sm font-bold flex items-center gap-1 hover:bg-amber-600 px-3 py-2 rounded-lg shadow-sm transition-colors">+ Adicionar</button>
+                </div>
+                
+                <div className="space-y-4">
+                {order.items.map((item, idx) => (
+                    <div key={item.id} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 relative">
+                        <button type="button" onClick={() => removeItem(idx)} className="absolute top-2 right-2 text-red-500 p-2"><Trash2 size={18} /></button>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                            <div className="md:col-span-5">
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Produto / Descrição</label>
                                 <select className={`${inputClass} mb-2`} value={item.productId} onChange={e => updateItem(idx, 'productId', e.target.value)}>
                                     <option value="">Avulso / Selecionar</option>
                                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                                <input placeholder="Descrição" className={inputClass} value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+                                <input placeholder="Descrição detalhada" className={inputClass} value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
                             </div>
-                            <div className="col-span-3 md:col-span-2">
-                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Qtd</label>
-                                <input type="number" min="0.01" step="0.01" className={inputClass} value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} />
-                            </div>
-                            <div className="col-span-4 md:col-span-2">
-                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Preço Un</label>
-                                <input type="number" step="0.01" className={inputClass} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} />
-                            </div>
-                            <div className="col-span-4 md:col-span-2">
-                                <label className="text-xs text-gray-500 dark:text-slate-400 block md:hidden mb-1">Custo Un</label>
-                                <input type="number" step="0.01" className={`${inputClass} bg-slate-50 dark:bg-slate-800/50 text-slate-500`} value={item.unitCost} onChange={e => updateItem(idx, 'unitCost', Number(e.target.value))} />
-                            </div>
-                            <div className="col-span-1 flex justify-center pt-2 md:pt-2">
-                                <button type="button" onClick={() => removeItem(idx)} className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-2"><Trash2 size={16} /></button>
-                            </div>
-                            <div className="col-span-12 text-right font-medium text-slate-700 dark:text-slate-300 text-sm mt-1">
-                                Subtotal: R$ {(item.quantity * item.unitPrice).toFixed(2)}
+                            <div className="grid grid-cols-2 gap-3 md:col-span-7">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Qtd</label>
+                                    <input type="number" min="0.01" step="0.01" className={inputClass} value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Preço (R$)</label>
+                                    <input type="number" step="0.01" className={inputClass} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} />
+                                </div>
                             </div>
                         </div>
-                    ))}
-                    {order.items.length === 0 && <p className="text-center text-gray-400 dark:text-slate-500 py-4">Nenhum item adicionado</p>}
-                  </div>
-               </div>
+                        <div className="mt-2 text-right font-bold text-slate-700 dark:text-slate-300">
+                            Total: R$ {(item.quantity * item.unitPrice).toFixed(2)}
+                        </div>
+                    </div>
+                ))}
+                {order.items.length === 0 && <p className="text-center text-gray-400 dark:text-slate-500 py-4">Nenhum item adicionado</p>}
+                </div>
             </div>
 
-            {/* Side Calculations */}
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800 transition-colors">
-                    <h3 className="font-bold border-b border-gray-100 dark:border-slate-800 pb-2 text-slate-800 dark:text-white">Valores e Frete</h3>
-                    
+            {/* Calculations */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm space-y-4 border border-gray-100 dark:border-slate-800">
+                <h3 className="font-bold border-b border-gray-100 dark:border-slate-800 pb-2 text-slate-800 dark:text-white">Pagamento e Totais</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className={labelClass}>Desconto</label>
+                        <label className={labelClass}>Forma de Pagamento</label>
+                        <select 
+                            className={inputClass}
+                            value={order.paymentMethod} 
+                            onChange={e => setOrder({...order, paymentMethod: e.target.value})}
+                        >
+                            <option value="">Selecione...</option>
+                            {paymentMethods.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                         <label className={labelClass}>Desconto</label>
                         <div className="flex gap-2">
                             <input type="number" className={inputClass} value={order.discount} onChange={e => setOrder({...order, discount: Number(e.target.value)})} />
                             <select className={`${inputClass} w-24`} value={order.discountType} onChange={e => setOrder({...order, discountType: e.target.value as any})}>
@@ -301,65 +320,44 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
                             </select>
                         </div>
                     </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                        <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Frete (Custo Real)</label>
-                        <input type="number" className="w-full border border-blue-200 dark:border-blue-800 rounded p-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-white" value={order.freightPrice} onChange={e => setOrder({...order, freightPrice: Number(e.target.value)})} />
-                        
-                        <div className="flex items-center gap-2 mt-3">
-                            <input type="checkbox" id="chargeFreight" className="w-4 h-4 text-primary rounded" checked={order.freightChargedToCustomer} onChange={e => setOrder({...order, freightChargedToCustomer: e.target.checked})} />
-                            <label htmlFor="chargeFreight" className="text-sm text-blue-800 dark:text-blue-300">Cobrar do cliente?</label>
-                        </div>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 opacity-80">
-                            {order.freightChargedToCustomer 
-                                ? "Adicionado à Venda. (Não conta como custo)." 
-                                : "NÃO entra na Venda. (Conta como custo/despesa)."}
-                        </p>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100 dark:border-slate-800 space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400"><span>Subtotal Itens:</span> <span>R$ {totals.subtotal.toFixed(2)}</span></div>
-                        <div className="flex justify-between text-sm text-red-500 dark:text-red-400"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div>
-                        {order.freightChargedToCustomer && (
-                             <div className="flex justify-between text-sm text-blue-600 dark:text-blue-400"><span>Frete (Receita):</span> <span>+ R$ {order.freightPrice.toFixed(2)}</span></div>
-                        )}
-                        <div className="flex justify-between text-xl font-bold text-slate-800 dark:text-white pt-2 border-t border-gray-100 dark:border-slate-800">
-                            <span>Total Venda:</span> 
-                            <span>R$ {totals.totalRevenue.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded text-xs space-y-1 text-gray-500 dark:text-gray-400">
-                         <div className="flex justify-between"><span>Custos Itens:</span> <span>R$ {order.items.reduce((a, b) => a + (b.unitCost * b.quantity), 0).toFixed(2)}</span></div>
-                         <div className="flex justify-between">
-                             <span>Custo Frete:</span> 
-                             <span>R$ {(!order.freightChargedToCustomer ? order.freightPrice : 0).toFixed(2)}</span>
-                        </div>
-                         <div className={`flex justify-between font-bold ${totals.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            <span>Lucro Estimado:</span> 
-                            <span>R$ {totals.profit.toFixed(2)}</span>
-                         </div>
-                    </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-                    <label className={labelClass}>Forma de Pagamento</label>
-                    <select 
-                        className={`${inputClass} mb-3`}
-                        value={order.paymentMethod} 
-                        onChange={e => setOrder({...order, paymentMethod: e.target.value})}
-                    >
-                        <option value="">Selecione...</option>
-                        {paymentMethods.map(m => (
-                            <option key={m} value={m}>{m}</option>
-                        ))}
-                    </select>
-                    {paymentMethods.length === 0 && <p className="text-xs text-red-500 mb-2">Configure os métodos de pagamento em Configurações.</p>}
+                <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                    <label className="block text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Frete / Entrega</label>
+                    <input type="number" className="w-full border border-blue-200 dark:border-blue-800 rounded p-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white" value={order.freightPrice} onChange={e => setOrder({...order, freightPrice: Number(e.target.value)})} />
                     
-                    <label className={labelClass}>Observações Internas</label>
-                    <textarea className={inputClass} rows={3} value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} />
+                    <div className="flex items-center gap-2 mt-3">
+                        <input type="checkbox" id="chargeFreight" className="w-5 h-5 text-primary rounded" checked={order.freightChargedToCustomer} onChange={e => setOrder({...order, freightChargedToCustomer: e.target.checked})} />
+                        <label htmlFor="chargeFreight" className="text-sm text-blue-800 dark:text-blue-300">Cobrar do cliente?</label>
+                    </div>
                 </div>
+
+                <div className="pt-4 border-t border-gray-100 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between text-base text-slate-600 dark:text-slate-400"><span>Subtotal Itens:</span> <span>R$ {totals.subtotal.toFixed(2)}</span></div>
+                    {order.discount > 0 && <div className="flex justify-between text-base text-red-500 dark:text-red-400"><span>Desconto:</span> <span>- R$ {(totals.subtotal - (order.discountType === 'money' ? totals.subtotal - order.discount : totals.subtotal * (1 - order.discount/100))).toFixed(2)}</span></div>}
+                    {order.freightChargedToCustomer && order.freightPrice > 0 && (
+                            <div className="flex justify-between text-base text-blue-600 dark:text-blue-400"><span>Frete:</span> <span>+ R$ {order.freightPrice.toFixed(2)}</span></div>
+                    )}
+                    <div className="flex justify-between text-2xl font-bold text-slate-800 dark:text-white pt-4 border-t border-gray-100 dark:border-slate-800 mt-2">
+                        <span>Total:</span> 
+                        <span>R$ {totals.totalRevenue.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div className="hidden md:block bg-gray-50 dark:bg-slate-800 p-3 rounded text-xs space-y-1 text-gray-500 dark:text-gray-400">
+                        <div className="flex justify-between"><span>Custos Itens:</span> <span>R$ {order.items.reduce((a, b) => a + (b.unitCost * b.quantity), 0).toFixed(2)}</span></div>
+                        <div className={`flex justify-between font-bold ${totals.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        <span>Lucro Estimado:</span> 
+                        <span>R$ {totals.profit.toFixed(2)}</span>
+                        </div>
+                </div>
+
+                 <label className={labelClass}>Observações Internas</label>
+                 <textarea className={inputClass} rows={3} value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} />
             </div>
+
+            {/* Mobile Bottom Spacer */}
+            <div className="h-10 md:hidden"></div>
           </div>
         </form>
       </div>
@@ -394,7 +392,8 @@ export const Orders: React.FC = () => {
     loadData();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (confirm('Excluir este pedido?')) {
         await db.orders.delete(id);
         await loadData();
@@ -405,11 +404,11 @@ export const Orders: React.FC = () => {
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-        case OrderStatus.APPROVED: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-        case OrderStatus.DELIVERED: return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-        case OrderStatus.CANCELED: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-        case OrderStatus.QUOTE: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
-        default: return 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300';
+        case OrderStatus.APPROVED: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+        case OrderStatus.DELIVERED: return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800';
+        case OrderStatus.CANCELED: return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800';
+        case OrderStatus.QUOTE: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800';
+        default: return 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300 border-gray-200 dark:border-slate-700';
     }
   };
 
@@ -442,48 +441,92 @@ export const Orders: React.FC = () => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Pedidos</h2>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white hidden md:block">Pedidos</h2>
         <button 
           onClick={() => setIsCreating(true)}
-          className="bg-primary hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-md"
+          className="w-full md:w-auto bg-primary hover:bg-yellow-700 text-white px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg md:shadow-md active:scale-95 transition-transform"
         >
-          <Plus size={18} /> Novo Pedido
+          <Plus size={20} /> <span className="font-bold">Novo Pedido</span>
         </button>
       </div>
 
       {/* Date Filters Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-slate-800 flex flex-wrap gap-2 items-center transition-colors">
-        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 mr-2">
+      <div className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-slate-800 flex flex-nowrap overflow-x-auto gap-2 items-center transition-colors no-scrollbar">
+        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 mr-2 shrink-0">
             <Calendar size={18} />
-            <span className="text-sm font-semibold">Período:</span>
         </div>
-        <div className="flex gap-2">
-            <button onClick={() => setDateFilterType('ALL')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Tudo</button>
-            <button onClick={() => setDateFilterType('TODAY')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'TODAY' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Hoje</button>
-            <button onClick={() => setDateFilterType('WEEK')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'WEEK' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Semana</button>
-            <button onClick={() => setDateFilterType('MONTH')} className={`px-3 py-1 rounded text-sm ${dateFilterType === 'MONTH' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Mês</button>
-        </div>
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Data:</span>
+        <button onClick={() => setDateFilterType('ALL')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${dateFilterType === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Tudo</button>
+        <button onClick={() => setDateFilterType('TODAY')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${dateFilterType === 'TODAY' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Hoje</button>
+        <button onClick={() => setDateFilterType('WEEK')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${dateFilterType === 'WEEK' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Semana</button>
+        <button onClick={() => setDateFilterType('MONTH')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${dateFilterType === 'MONTH' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Mês</button>
+        
+        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-slate-700 shrink-0">
             <input 
                 type="date" 
                 value={customDate} 
                 onChange={e => { setCustomDate(e.target.value); setDateFilterType('CUSTOM'); }}
-                className={`border rounded px-2 py-1 text-sm bg-white dark:bg-slate-800 dark:text-white ${dateFilterType === 'CUSTOM' ? 'border-primary ring-1 ring-primary' : 'border-gray-200 dark:border-slate-700'}`} 
+                className={`border rounded px-2 py-1 text-xs bg-white dark:bg-slate-800 dark:text-white ${dateFilterType === 'CUSTOM' ? 'border-primary ring-1 ring-primary' : 'border-gray-200 dark:border-slate-700'}`} 
             />
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>Status: Todos</button>
+      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <button onClick={() => setFilterStatus('ALL')} className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filterStatus === 'ALL' ? 'bg-slate-800 text-white dark:bg-slate-700 shadow-md' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>Todos</button>
         {Object.values(OrderStatus).map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filterStatus === s ? 'bg-slate-800 text-white dark:bg-slate-700' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>{s}</button>
+            <button key={s} onClick={() => setFilterStatus(s)} className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filterStatus === s ? 'bg-slate-800 text-white dark:bg-slate-700 shadow-md' : 'bg-white dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-300'}`}>{s}</button>
         ))}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
+      {/* MOBILE CARD VIEW */}
+      <div className="md:hidden space-y-4">
+        {loading && <div className="text-center py-10 text-gray-500">Carregando...</div>}
+        {!loading && filtered.length === 0 && (
+            <div className="text-center py-10 text-gray-400 dark:text-slate-600">Nenhum pedido encontrado.</div>
+        )}
+        {filtered.map(order => {
+             let sub = order.items.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
+             let disc = order.discountType === 'money' ? order.discount : sub * (order.discount/100);
+             let total = sub - disc + (order.freightChargedToCustomer ? order.freightPrice : 0);
+
+             return (
+                 <div key={order.id} onClick={() => setEditingId(order.id)} className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 active:scale-[0.99] transition-transform relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-3">
+                        <div>
+                            <span className="text-xs font-bold text-gray-400">#{order.id}</span>
+                            <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{getClientName(order.clientId)}</h3>
+                        </div>
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase border ${getStatusColor(order.status)}`}>{order.status}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-end">
+                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                             {new Date(order.date).toLocaleDateString('pt-BR')}
+                             <div className="text-xs mt-1">{order.items.length} itens</div>
+                        </div>
+                        <div className="text-right">
+                             <span className="block text-xs text-slate-400">Total</span>
+                             <span className="text-xl font-black text-slate-800 dark:text-white">R$ {total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions Overlay on click handled by parent, but specific buttons stop propagation */}
+                    <div className="mt-4 pt-3 border-t border-gray-50 dark:border-slate-800 flex justify-end gap-3">
+                         <Link to={`/print/order/${order.id}`} target="_blank" onClick={e => e.stopPropagation()} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full">
+                            <Printer size={18} />
+                         </Link>
+                         <button onClick={(e) => handleDelete(order.id, e)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full">
+                            <Trash2 size={18} />
+                         </button>
+                    </div>
+                 </div>
+             )
+        })}
+      </div>
+
+      {/* DESKTOP TABLE VIEW */}
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
           {loading ? <div className="p-8 text-center text-gray-500 dark:text-slate-400">Carregando...</div> : (
           <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
@@ -498,7 +541,6 @@ export const Orders: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {filtered.map(order => {
-                // Quick Calc for display
                 let sub = order.items.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
                 let disc = order.discountType === 'money' ? order.discount : sub * (order.discount/100);
                 let total = sub - disc + (order.freightChargedToCustomer ? order.freightPrice : 0);
@@ -511,7 +553,7 @@ export const Orders: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{getClientName(order.clientId)}</td>
                     <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(order.status)}`}>{order.status}</span>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(order.status)}`}>{order.status}</span>
                     </td>
                     <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">R$ {total.toFixed(2)}</td>
                     <td className="px-6 py-4 text-right flex justify-end gap-3">
