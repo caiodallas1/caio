@@ -63,6 +63,11 @@ export interface Order {
   paymentMethod: string; // Mapped to payment_method
   notes: string;
   createdAt: string;
+  
+  // Novos campos de controle
+  externalProductionLink?: string; // mapped to external_production_link
+  trackingCode?: string; // mapped to tracking_code
+  trackingUrl?: string; // mapped to tracking_url
 }
 
 export interface Expense {

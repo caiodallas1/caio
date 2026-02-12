@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Order, OrderItem, OrderStatus, Product, Client } from '../types';
-import { Plus, Search, Trash2, Edit2, Printer, Calendar, RefreshCw, ChevronRight, User } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Printer, Calendar, RefreshCw, ChevronRight, User, ExternalLink, Copy, Truck, Link as LinkIcon, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: () => void, onSaved: () => void }) => {
@@ -27,7 +27,10 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
     discountType: 'money',
     paymentMethod: '',
     notes: '',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    externalProductionLink: '',
+    trackingCode: '',
+    trackingUrl: ''
   });
 
   const [loading, setLoading] = useState(true);
@@ -161,6 +164,11 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
     }
   };
 
+  const copyToClipboard = (text: string) => {
+      navigator.clipboard.writeText(text);
+      alert("Link copiado!");
+  };
+
   const inputClass = "w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base focus:ring-2 focus:ring-primary focus:outline-none transition-colors";
   const labelClass = "block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300";
 
@@ -251,6 +259,75 @@ const OrderForm = ({ orderId, onClose, onSaved }: { orderId?: string, onClose: (
                 </div>
                 </div>
             </div>
+
+            {/* Client Area Link (Visible only if Order Exists) */}
+            {orderId && (
+                <div className="bg-slate-900 p-5 rounded-xl shadow-lg border border-slate-700 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <User size={100} className="text-white"/>
+                    </div>
+                    <h3 className="font-bold text-lg text-white mb-2 flex items-center gap-2"><Lock size={18} className="text-amber-500"/> Área do Cliente (Link Público)</h3>
+                    <p className="text-slate-400 text-sm mb-4">Envie este link para seu cliente acompanhar o status do pedido em tempo real.</p>
+                    
+                    <div className="flex gap-2">
+                        <div className="flex-1 bg-slate-950 rounded-lg border border-slate-700 p-3 text-slate-300 text-sm truncate font-mono select-all">
+                            {window.location.origin + '/#/track/' + order.id}
+                        </div>
+                        <button type="button" onClick={() => copyToClipboard(window.location.origin + '/#/track/' + order.id)} className="bg-amber-600 hover:bg-amber-500 text-white px-4 rounded-lg font-bold flex items-center gap-2">
+                            <Copy size={16}/> Copiar
+                        </button>
+                        <a href={`/#/track/${order.id}`} target="_blank" className="bg-slate-700 hover:bg-slate-600 text-white px-4 rounded-lg font-bold flex items-center gap-2">
+                            <ExternalLink size={16}/> Abrir
+                        </a>
+                    </div>
+                </div>
+            )}
+            
+            {/* Internal Control (Production & Tracking) */}
+            {orderId && (
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
+                     <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <Truck size={20} className="text-primary"/> Controle Interno
+                     </h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="col-span-1 md:col-span-2">
+                            <label className={labelClass}>Link de Produção (Parceiro/Gráfica) - <span className="text-xs text-gray-400 font-normal">Somente você vê isso</span></label>
+                            <div className="relative">
+                                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    className={`${inputClass} pl-10`} 
+                                    placeholder="https://graficaparceira.com.br/pedido/123"
+                                    value={order.externalProductionLink || ''}
+                                    onChange={e => setOrder({...order, externalProductionLink: e.target.value})}
+                                />
+                                {order.externalProductionLink && (
+                                    <a href={order.externalProductionLink} target="_blank" className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700">
+                                        <ExternalLink size={16}/>
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Código de Rastreio (Correios/Transp)</label>
+                            <input 
+                                className={`${inputClass} font-mono uppercase`} 
+                                placeholder="AA123456789BR"
+                                value={order.trackingCode || ''}
+                                onChange={e => setOrder({...order, trackingCode: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Link de Rastreio</label>
+                            <input 
+                                className={inputClass} 
+                                placeholder="https://rastreamento..."
+                                value={order.trackingUrl || ''}
+                                onChange={e => setOrder({...order, trackingUrl: e.target.value})}
+                            />
+                        </div>
+                     </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
                 <div className="flex justify-between items-center mb-4">

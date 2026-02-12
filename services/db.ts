@@ -87,14 +87,16 @@ export const db = {
           discountType: row.discount_type || 'money',
           paymentMethod: row.payment_method || '',
           notes: row.notes,
-          createdAt: row.created_at
+          createdAt: row.created_at,
+          externalProductionLink: row.external_production_link,
+          trackingCode: row.tracking_code,
+          trackingUrl: row.tracking_url
       }));
     },
     save: async (data: Order) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       // Mapeia do App (camelCase) para o Banco (snake_case) explicitamente
-      // IMPORTANTE: Não envie chaves extras que não existem no banco
       const payload = {
           id: data.id,
           user_id: user?.id,
@@ -109,7 +111,12 @@ export const db = {
           freight_charged_to_customer: data.freightChargedToCustomer,
           discount_type: data.discountType,
           payment_method: data.paymentMethod,
-          created_at: data.createdAt
+          created_at: data.createdAt,
+          
+          // Novos campos
+          external_production_link: data.externalProductionLink,
+          tracking_code: data.trackingCode,
+          tracking_url: data.trackingUrl
       };
 
       const { error } = await supabase.from('orders').upsert(payload);
@@ -135,22 +142,50 @@ export const db = {
           discountType: data.discount_type || 'money',
           paymentMethod: data.payment_method || '',
           notes: data.notes,
-          createdAt: data.created_at
+          createdAt: data.created_at,
+          externalProductionLink: data.external_production_link,
+          trackingCode: data.tracking_code,
+          trackingUrl: data.tracking_url
       };
+    },
+    // Função pública para a Área do Cliente (requer políticas RLS públicas ou anon key habilitada para leitura nesta tabela)
+    getPublic: async (id: string): Promise<{ order: Order, clientName: string } | undefined> => {
+        const { data: orderData, error } = await supabase.from('orders').select('*').eq('id', id).single();
+        if (error || !orderData) return undefined;
+        
+        // Busca nome do cliente separadamente
+        const { data: clientData } = await supabase.from('clients').select('name').eq('id', orderData.client_id).single();
+
+        const mappedOrder: Order = {
+            id: orderData.id,
+            clientId: orderData.client_id,
+            date: orderData.date,
+            status: orderData.status,
+            items: orderData.items,
+            freightPrice: orderData.freight_price ?? 0,
+            freightChargedToCustomer: orderData.freight_charged_to_customer ?? true,
+            discount: orderData.discount ?? 0,
+            discountType: orderData.discount_type || 'money',
+            paymentMethod: orderData.payment_method || '',
+            notes: orderData.notes,
+            createdAt: orderData.created_at,
+            externalProductionLink: orderData.external_production_link,
+            trackingCode: orderData.tracking_code,
+            trackingUrl: orderData.tracking_url
+        };
+        
+        return { order: mappedOrder, clientName: clientData?.name || 'Cliente' };
     },
     getNextOrderId: async (): Promise<string> => {
         try {
             const settings = await db.settings.get();
             const nextNum = settings.nextOrderNumber || 1;
-            // Gera ID sequencial com 5 dígitos: 00001, 00002...
             const idStr = String(nextNum).padStart(5, '0');
-            
-            // Incrementa e salva. Como corrigimos o db.settings.save, isso agora vai funcionar sem erro PGRST204
             await db.settings.save({ ...settings, nextOrderNumber: nextNum + 1 });
             return idStr;
         } catch (error) {
             console.error("Erro ao gerar ID:", error);
-            return generateId(); // Fallback se falhar
+            return generateId(); 
         }
     }
   },
@@ -187,19 +222,16 @@ export const db = {
       const { data, error } = await supabase.from('settings').select('*').eq('user_id', user.id).single();
       
       if (error || !data) {
-          // Cria configurações iniciais se não existirem
           const initial = { 
               user_id: user.id,
               company_name: DEFAULT_SETTINGS.companyName,
               payment_methods: ['Pix', 'Cartão de Crédito (Link)'],
               next_order_number: 1,
-              // outros valores default se necessário
           };
           await supabase.from('settings').insert(initial);
           return DEFAULT_SETTINGS;
       }
       
-      // Mapeamento DB (snake_case) -> App (camelCase)
       return {
           companyName: data.company_name || DEFAULT_SETTINGS.companyName,
           companyDoc: data.company_doc || DEFAULT_SETTINGS.companyDoc,
@@ -219,7 +251,6 @@ export const db = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      // CORREÇÃO CRÍTICA: Enviar APENAS colunas que existem no banco (snake_case)
       const payload = {
           user_id: user.id,
           company_name: data.companyName,

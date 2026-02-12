@@ -10,6 +10,7 @@ import { Expenses } from './pages/Expenses';
 import { SettingsPage } from './pages/Settings';
 import { PrintOrder } from './pages/PrintOrder';
 import { PrintReport } from './pages/PrintReport';
+import { ClientOrderArea } from './pages/ClientOrderArea';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { auth } from './services/auth';
@@ -55,6 +56,9 @@ const App: React.FC = () => {
           
           <Route path="/print/order/:id" element={<PrivateRoute hasAccess={!!user}><PrintOrder /></PrivateRoute>} />
           <Route path="/print/report/:month" element={<PrivateRoute hasAccess={!!user}><PrintReport /></PrivateRoute>} />
+          
+          {/* Rota Pública - Área do Cliente (Não usa PrivateRoute) */}
+          <Route path="/track/:id" element={<ClientOrderArea />} />
           
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
