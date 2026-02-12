@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { db } from '../services/db';
@@ -75,6 +76,7 @@ export const PrintOrder: React.FC = () => {
                 <thead>
                     <tr className="border-b-2 border-slate-800">
                         <th className="text-left py-2 text-sm font-bold text-slate-800">ITEM / DESCRIÇÃO</th>
+                        <th className="text-center py-2 text-sm font-bold text-slate-800 w-24">UND.</th>
                         <th className="text-center py-2 text-sm font-bold text-slate-800 w-20">QTD</th>
                         <th className="text-right py-2 text-sm font-bold text-slate-800 w-32">VALOR UN.</th>
                         <th className="text-right py-2 text-sm font-bold text-slate-800 w-32">TOTAL</th>
@@ -84,9 +86,15 @@ export const PrintOrder: React.FC = () => {
                     {order.items.map((item, idx) => (
                         <tr key={idx}>
                             <td className="py-3 text-sm text-slate-700">
-                                {item.description}
+                                <div className="font-bold text-slate-800">{item.name || item.description}</div>
+                                {item.name && item.description && item.name !== item.description && (
+                                    <div className="text-xs text-slate-500 mt-1">{item.description}</div>
+                                )}
                             </td>
-                            <td className="py-3 text-center text-sm text-slate-700">{item.quantity}</td>
+                            <td className="py-3 text-center text-xs font-bold text-slate-600 uppercase">
+                                {item.itemUnit || 'UN'}
+                            </td>
+                            <td className="py-3 text-center text-sm text-slate-700 font-bold">{item.quantity}</td>
                             <td className="py-3 text-right text-sm text-slate-700">
                                 {item.unitPrice.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
                             </td>

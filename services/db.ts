@@ -48,6 +48,8 @@ export const db = {
           id: data.id,
           user_id: user?.id,
           name: data.name,
+          code: data.code,
+          image: data.image,
           description: data.description,
           unit: data.unit,
           price: data.price,
@@ -73,7 +75,6 @@ export const db = {
       const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
       if (error) throw error;
       
-      // Mapeia de volta do banco (snake_case) para o app (camelCase)
       return (data || []).map(row => ({
           id: row.id,
           user_id: row.user_id,
@@ -96,7 +97,6 @@ export const db = {
     save: async (data: Order) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Mapeia do App (camelCase) para o Banco (snake_case) explicitamente
       const payload = {
           id: data.id,
           user_id: user?.id,
@@ -113,7 +113,6 @@ export const db = {
           payment_method: data.paymentMethod,
           created_at: data.createdAt,
           
-          // Novos campos
           external_production_link: data.externalProductionLink,
           tracking_code: data.trackingCode,
           tracking_url: data.trackingUrl
@@ -148,12 +147,11 @@ export const db = {
           trackingUrl: data.tracking_url
       };
     },
-    // Função pública para a Área do Cliente (requer políticas RLS públicas ou anon key habilitada para leitura nesta tabela)
     getPublic: async (id: string): Promise<{ order: Order, clientName: string } | undefined> => {
+        // Esta função NÃO deve usar auth.getUser(), pois é pública
         const { data: orderData, error } = await supabase.from('orders').select('*').eq('id', id).single();
         if (error || !orderData) return undefined;
         
-        // Busca nome do cliente separadamente
         const { data: clientData } = await supabase.from('clients').select('name').eq('id', orderData.client_id).single();
 
         const mappedOrder: Order = {

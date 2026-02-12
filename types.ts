@@ -21,6 +21,8 @@ export interface Product {
   id: string;
   user_id?: string;
   name: string;
+  code?: string; // Novo: Código do produto (SKU)
+  image?: string; // Novo: URL da imagem
   description: string;
   unit: string;
   price: number;
@@ -42,32 +44,41 @@ export enum OrderStatus {
 export interface OrderItem {
   id: string;
   productId: string; // or empty if custom
-  description: string;
+  name: string; // Novo: Nome curto do item
+  itemUnit?: string; // Novo: Unidade de exibição (ex: UN, KG, CX)
+  description: string; // Detalhes técnicos para o cliente
   quantity: number;
-  unitPrice: number;
+  unitPrice: number; // Preço final unitário
   unitCost: number;
+  
+  // Novos campos para cálculo personalizado
+  pricingType?: 'unit' | 'area';
+  width?: number;
+  height?: number;
+  unitMeasure?: 'mm' | 'cm' | 'm';
+  areaPrice?: number; // Preço do m2 base
+  finishingPrice?: number; // Acabamento
 }
 
 export interface Order {
   id: string;
   user_id?: string;
-  clientId: string; // Changed from camelCase in DB, but mapped in service
-  client_id?: string; // For DB mapping
-  date: string; // ISO Date YYYY-MM-DD
+  clientId: string; 
+  client_id?: string; 
+  date: string; 
   status: OrderStatus;
   items: OrderItem[];
-  freightPrice: number; // Mapped to freight_price
-  freightChargedToCustomer: boolean; // Mapped to freight_charged_to_customer
+  freightPrice: number; 
+  freightChargedToCustomer: boolean; 
   discount: number;
-  discountType: 'money' | 'percentage'; // Mapped to discount_type
-  paymentMethod: string; // Mapped to payment_method
+  discountType: 'money' | 'percentage'; 
+  paymentMethod: string; 
   notes: string;
   createdAt: string;
   
-  // Novos campos de controle
-  externalProductionLink?: string; // mapped to external_production_link
-  trackingCode?: string; // mapped to tracking_code
-  trackingUrl?: string; // mapped to tracking_url
+  externalProductionLink?: string; 
+  trackingCode?: string; 
+  trackingUrl?: string; 
 }
 
 export interface Expense {
@@ -85,7 +96,7 @@ export interface Settings {
   companyDoc: string;
   companyAddress: string;
   companyContact: string;
-  logoUrl: string; // Base64 or URL
+  logoUrl: string; 
   quoteValidityDays: number;
   quoteTerms: string;
   statusesConsideredSale: OrderStatus[];

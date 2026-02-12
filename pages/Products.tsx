@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, generateId } from '../services/db';
 import { Product } from '../types';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, ImageIcon, Tag, Upload, X } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,7 +43,27 @@ export const Products: React.FC = () => {
     }
   };
 
-  const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1000000) return alert('A imagem deve ter menos de 1MB.'); // 1MB limit for base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCurrent({ ...current, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+      setCurrent({ ...current, image: '' });
+  };
+
+  const filtered = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+  
   const formatMoney = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   return (
@@ -64,7 +84,7 @@ export const Products: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar produto..." 
+              placeholder="Buscar por nome ou código..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-primary focus:outline-none dark:text-white transition-all"
@@ -72,43 +92,14 @@ export const Products: React.FC = () => {
           </div>
         </div>
         
-        {/* MOBILE CARD VIEW */}
-        <div className="md:hidden">
-            {loading && <div className="p-8 text-center text-gray-500">Carregando...</div>}
-            {filtered.map(p => {
-                const margin = p.price - p.cost;
-                return (
-                    <div key={p.id} className="p-5 border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                         <div className="flex justify-between items-start mb-3">
-                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{p.name}</h3>
-                                <div className="text-xs text-slate-400">{p.unit} • {p.category}</div>
-                             </div>
-                             <div className="text-right">
-                                 <div className="font-bold text-primary text-lg">{formatMoney(p.price)}</div>
-                                 <div className="text-xs text-green-500">Lucro: {formatMoney(margin)}</div>
-                             </div>
-                         </div>
-                         <div className="flex justify-end gap-2 mt-2">
-                             <button onClick={() => { setCurrent(p); setIsModalOpen(true); }} className="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center gap-1">
-                                <Edit size={14}/> Editar
-                             </button>
-                             <button onClick={() => handleDelete(p.id)} className="px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500 font-medium text-xs flex items-center gap-1">
-                                <Trash2 size={14}/> Excluir
-                             </button>
-                         </div>
-                    </div>
-                )
-            })}
-        </div>
-
         {/* DESKTOP TABLE VIEW */}
         <div className="hidden md:block overflow-x-auto">
           {loading ? <div className="p-8 text-center text-gray-500">Carregando...</div> : (
           <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
             <thead className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold border-b dark:border-slate-700">
               <tr>
-                <th className="px-6 py-4">Nome</th>
+                <th className="px-6 py-4 w-16">Img</th>
+                <th className="px-6 py-4">Código / Nome</th>
                 <th className="px-6 py-4">Categoria</th>
                 <th className="px-6 py-4">Preço Venda</th>
                 <th className="px-6 py-4">Custo</th>
@@ -121,9 +112,21 @@ export const Products: React.FC = () => {
                 const margin = p.price - p.cost;
                 return (
                   <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                        {p.image ? (
+                            <img src={p.image} alt="" className="w-10 h-10 rounded object-cover border border-gray-100 dark:border-slate-700" />
+                        ) : (
+                            <div className="w-10 h-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300"><ImageIcon size={16}/></div>
+                        )}
+                    </td>
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">
-                        {p.name}
-                        <div className="text-xs text-gray-400">{p.unit}</div>
+                        <div className="flex flex-col">
+                            <span className="font-bold">{p.name}</span>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                {p.code && <span className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-500 px-1 rounded border border-yellow-100 dark:border-yellow-900/30 font-mono">{p.code}</span>}
+                                <span>{p.unit}</span>
+                            </div>
+                        </div>
                     </td>
                     <td className="px-6 py-4"><span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200">{p.category}</span></td>
                     <td className="px-6 py-4 font-semibold">{formatMoney(p.price)}</td>
@@ -138,7 +141,7 @@ export const Products: React.FC = () => {
                   </tr>
                 )
               })}
-              {filtered.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>}
             </tbody>
           </table>
           )}
@@ -154,10 +157,40 @@ export const Products: React.FC = () => {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">✕</button>
               </div>
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                <div>
-                  <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nome *</label>
-                  <input required className="w-full border dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 dark:text-white" value={current.name || ''} onChange={e => setCurrent({...current, name: e.target.value})} />
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium mb-1 dark:text-slate-300">Código (Opcional)</label>
+                        <input className="w-full border dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 dark:text-white" value={current.code || ''} onChange={e => setCurrent({...current, code: e.target.value})} placeholder="ex: 001" />
+                    </div>
+                     <div className="flex-[2]">
+                        <label className="block text-sm font-medium mb-1 dark:text-slate-300">Nome *</label>
+                        <input required className="w-full border dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 dark:text-white" value={current.name || ''} onChange={e => setCurrent({...current, name: e.target.value})} />
+                    </div>
                 </div>
+                
+                <div>
+                     <label className="block text-sm font-medium mb-1 dark:text-slate-300">Imagem do Produto</label>
+                     <div className="flex items-center gap-4">
+                        {current.image ? (
+                            <div className="relative">
+                                <img src={current.image} alt="Preview" className="h-20 w-20 object-cover rounded-lg border dark:border-slate-700" />
+                                <button type="button" onClick={removeImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600">
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
+                                <ImageIcon size={24}/>
+                            </div>
+                        )}
+                        
+                        <label className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2">
+                            <Upload size={16}/> Carregar do PC
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </label>
+                     </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1 dark:text-slate-300">Unidade (un, kg)</label>
